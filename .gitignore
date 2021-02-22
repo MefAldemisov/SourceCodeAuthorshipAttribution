@@ -1,0 +1,12 @@
+myenv/*
+myenv*
+gcj-dataset/*
+gcj-dataset*
+.ipynb_checkpoints/*
+.ipynb_checkpoints*
+.python-version
+embd/*
+embd
+*.csv
+*.h5
+.DS_Store
