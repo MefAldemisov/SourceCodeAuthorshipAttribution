@@ -58,7 +58,6 @@ class Embedding(Triplet):
 
     def initial_preprocess(self, df_path, tmp_dataset_filename):
         std_initial_preprocess(self.input_size, df_path, tmp_dataset_filename)
-        self.make_initial_preprocess = False
 
     def secondary_preprocess(self, tmp_dataset_filename):
         dataset = pd.read_json(tmp_dataset_filename)
