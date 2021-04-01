@@ -13,3 +13,9 @@ embd
 .vscode/*
 .vscode
 *.json
+**__pycache__
+**__pycache__*
+**/__pycache__/*
+!inputs/preprocessed_jsons/embedding_train.json
+old_notebooks/*
+.python-version
