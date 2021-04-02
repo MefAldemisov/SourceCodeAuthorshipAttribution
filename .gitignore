@@ -19,3 +19,5 @@ embd
 !inputs/preprocessed_jsons/embedding_train.json
 old_notebooks/*
 .python-version
+.idea*
+.idea/*

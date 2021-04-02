@@ -16,7 +16,6 @@ class TestCallback(callbacks.Callback):
         self.recalls = []
         self.local_model = empty_model
         self.local_model.build((None, self.input_size))
-        print(self.local_model.summary())
 
     def _recreate_model(self):
         # 3 - because triplet is about TREE concatenated input layers
