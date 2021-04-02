@@ -5,27 +5,34 @@ from tensorflow.keras import callbacks
 
 class TestCallback(callbacks.Callback):
 
-    def __init__(self, X, y, emb_model, threshold=0.2, input_size=500):
+    def __init__(self, X, y, empty_model, threshold=0.2, input_size=500):
         super().__init__()
         self.threshold = threshold
         self.input_size = input_size
-        self.emb_model = emb_model
         index = np.where(y < 5)[0]
         self.X = X[index]
         self.y = y[index]
         self.scores = []
         self.recalls = []
+        self.local_model = empty_model
+        self.local_model.build((None, self.input_size))
+        print(self.local_model.summary())
+
+    def _recreate_model(self):
+        # 3 - because triplet is about TREE concatenated input layers
+        weights = self.model.layers[3].get_weights()
+        self.local_model.set_weights(weights)
 
     def on_epoch_end(self, epoch, logs=None):
-        # (model, new_X, new_y, threshold=0.2, printing=0):
-        transformed_X = self.emb_model.predict(self.X.reshape(-1, self.input_size, 1))
-        #     X_train, X_test, y_train, y_test = train_test_split(transformed_X, new_y)
+        self._recreate_model()
+
+        transformed_x = self.local_model.predict(self.X.reshape(-1, self.input_size))
 
         y_pred = []
         y_true = []
         for i in range(self.X.shape[0]):
             for j in range(i, self.X.shape[0]):
-                if np.mean((transformed_X[i] - transformed_X[j]) ** 2) <= self.threshold:
+                if np.mean((transformed_x[i] - transformed_x[j]) ** 2) <= self.threshold:
                     y_pred.append(1)
                 else:
                     y_pred.append(0)
@@ -39,11 +46,6 @@ class TestCallback(callbacks.Callback):
 
         score = accuracy_score(y_true, y_pred)
         cm = confusion_matrix(y_true, y_pred)
-        #         if printing:
-        #             print(cm)
-        #             print("total predicted as 1:", sum(y_pred),
-        #                   "\n total real 1:", sum(y_true),
-        #                   "\n total examples", y_true.shape)
 
         recall = cm[1][1] / sum(y_true)
 

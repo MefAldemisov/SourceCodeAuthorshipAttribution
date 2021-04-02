@@ -89,8 +89,8 @@ class Triplet(Model):
         # TODO: add TensorBoard
         # tb = callbacks.TensorBoard(log_dir="./tensor_board", histogram_freq=1)
 
-        # test_cb = TestCallback(X_train.reshape((-1, self.input_size)), y_train,
-        #                        self.create_model(), input_size=self.input_size)
+        test_cb = TestCallback(X_train.reshape((-1, self.input_size)), y_train,
+                               self.create_model(), input_size=self.input_size)
 
         triplet.compile(loss=self.triplet_loss, optimizer=optimizer)
 
