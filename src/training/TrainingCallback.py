@@ -1,6 +1,9 @@
 import numpy as np
-from sklearn.metrics import accuracy_score, confusion_matrix
+import matplotlib.pyplot as plt
+
+from sklearn.decomposition import PCA
 from tensorflow.keras import callbacks
+from sklearn.metrics import accuracy_score, confusion_matrix
 
 
 class TestCallback(callbacks.Callback):
@@ -10,17 +13,28 @@ class TestCallback(callbacks.Callback):
         self.threshold = threshold
         self.input_size = input_size
         index = np.where(y < 5)[0]
+        print("Length", len(index))
         self.X = X[index]
         self.y = y[index]
         self.scores = []
         self.recalls = []
         self.local_model = empty_model
         self.local_model.build((None, self.input_size))
+        self.n = 0
 
     def _recreate_model(self):
         # 3 - because triplet is about TREE concatenated input layers
         weights = self.model.layers[3].get_weights()
         self.local_model.set_weights(weights)
+
+    def apply_pca(self, transformed_x, n_authors=5):
+        pca = PCA(n_components=3)
+        x_pca = pca.fit_transform(transformed_x)
+        for developer in range(n_authors):
+            indexes = np.where(self.y == developer)
+            plt.plot(x_pca[indexes][0], x_pca[indexes][1], "o-", ms=3)
+        plt.savefig("../outputs/pca/pca_{}.png".format(self.n))
+        self.n += 1
 
     def on_epoch_end(self, epoch, logs=None):
         self._recreate_model()
@@ -51,7 +65,10 @@ class TestCallback(callbacks.Callback):
         self.scores.append(score)
         self.recalls.append(recall)
         print("accuracy:", round(score, 4), "recall:", round(recall, 4))
+        self.apply_pca(transformed_x)
         return score, recall
 
     def return_results(self):
         return {"scores": self.scores, "recalls": self.recalls}
+
+

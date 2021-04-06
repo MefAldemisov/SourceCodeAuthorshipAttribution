@@ -5,6 +5,8 @@ from models.Model import Model
 from training.TrainingCallback import TestCallback
 from tensorflow.keras import layers, callbacks, optimizers, models
 
+from visualization.visualization import apply_pca
+
 
 class Triplet(Model):
     def __init__(self, name, input_size, output_size, make_initial_preprocess):
@@ -40,7 +42,7 @@ class Triplet(Model):
     def data_generator(self, X, y, batch_size=32):
         while True:
             batch = self._batches_generator(X, y, batch_size)
-            labels = np.zeros((batch_size, self.input_size*3))
+            labels = None
             yield batch, labels
 
     def triplet_loss(self, _, y_pred):
@@ -99,4 +101,5 @@ class Triplet(Model):
                               epochs=epochs,
                               verbose=1,
                               callbacks=[lr_schedule, early_stopping, test_cb])
+        apply_pca(self.model, X_train, y_train)
         return history
