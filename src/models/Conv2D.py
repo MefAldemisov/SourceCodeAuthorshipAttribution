@@ -9,10 +9,10 @@ from sklearn.model_selection import train_test_split
 
 
 class Conv2D(Triplet):
-    def __init__(self, output_size=50, img_x=120, img_y=200, make_initial_preprocess=True):
+    def __init__(self, triplet_type="default", output_size=50, img_x=120, img_y=200, make_initial_preprocess=True):
         self.img_x, self.img_y = img_x, img_y
         super().__init__("conv2d", input_size=img_x*img_y, output_size=output_size,
-                         make_initial_preprocess=make_initial_preprocess)
+                         make_initial_preprocess=make_initial_preprocess, triplet_type=triplet_type)
 
     def create_model(self):
         model_core = keras.Sequential()
@@ -59,12 +59,6 @@ class Conv2D(Triplet):
         # string to int for y
         le = LabelEncoder()
         df.username = le.fit_transform(df.username)
-        # save
-        dataset = df[["username", "flines"]]
-        dataset.to_json(tmp_dataset_filename)
-
-    def secondary_preprocess(self, tmp_dataset_filename):
-        df = pd.read_json(tmp_dataset_filename)
 
         def vectorize(file):
             lines = file.split('\n')
@@ -79,12 +73,19 @@ class Conv2D(Triplet):
 
         X = df.flines.apply(vectorize).values
         X = np.array([np.array(x) for x in X])
-        X = X.reshape(-1, self.img_y, self.img_x)
-
-        y = np.array(df.username)
 
         ss = StandardScaler()
         X = ss.fit_transform(X.reshape((-1, self.img_y * self.img_x))).reshape((-1, self.img_y, self.img_x))
+        X = X.tolist()
 
+        df["vectors"] = X
+        dataset = df[["username", "vectors"]]
+        dataset.to_json(tmp_dataset_filename)
+
+    def secondary_preprocess(self, tmp_dataset_filename):
+        df = pd.read_json(tmp_dataset_filename)
+        print("readen")
+        X = np.array(df.vectors.values.tolist()).reshape(-1, self.img_y * self.img_x)
+        y = np.array(df.username)
         X_train, X_test, y_train, y_test = train_test_split(X, y)
         return X_train, X_test, y_train, y_test
