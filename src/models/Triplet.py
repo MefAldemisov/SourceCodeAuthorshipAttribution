@@ -2,15 +2,17 @@ import numpy as np
 import tensorflow as tf
 
 from models.Model import Model
+import tensorflow_addons as tfa
 from training.TrainingCallback import TestCallback
 from tensorflow.keras import layers, callbacks, optimizers, models
 
-from visualization.visualization import apply_pca
-
 
 class Triplet(Model):
-    def __init__(self, name, input_size, output_size, make_initial_preprocess):
+    def __init__(self, name, triplet_type="default",
+                 input_size=500, output_size=50,
+                 make_initial_preprocess=True):
         super().__init__(name, make_initial_preprocess)
+        self.triplet_type = triplet_type
         self.input_size = input_size
         self.output_size = output_size
         self.model = self.create_model()
@@ -72,13 +74,27 @@ class Triplet(Model):
             [input_anchor, input_positive, input_negative], result)
         return triplet
 
+    def get_loss(self):
+        if self.triplet_type == "default":
+            return self.triplet_loss
+        elif self.triplet_type == "hard":
+            return tfa.losses.TripletHardLoss(margin=0.2)
+        elif self.triplet_type == "semi_hard":
+            return tfa.losses.TripletSemiHardLoss(margin=0.2)
+        else:
+            raise ValueError("Invalid loss_type. Given {}, should be 'default', 'hard' or 'semi_hard'"
+                             .format(self.triplet_type))
+
+    # def add_input_layer(self):
+    #     input_layer = layers.Input(shape=self.input_size)
+    #     return models.Model(input_layer, self.model(input_layer))
+
     def train(self, batch_size: int = 128, epochs: int = 100,
               lr_patience: int = 3, stopping_patience: int = 12):
 
         X_train, x_test,  y_train, y_test = self.preprocess()
-
-        triplet = self.create_triplet_model()
-
+        is_default = self.triplet_type == "default"
+        triplet = self.create_triplet_model() if is_default else self.model
         steps_per_epoch = int(X_train.shape[0]/batch_size)
         optimizer = optimizers.Adam(0.1)
         lr_schedule = callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5,
@@ -92,14 +108,21 @@ class Triplet(Model):
         # tb = callbacks.TensorBoard(log_dir="./tensor_board", histogram_freq=1)
 
         test_cb = TestCallback(X_train.reshape((-1, self.input_size)), y_train,
-                               self.create_model(), input_size=self.input_size)
+                               self.create_model(), input_size=self.input_size, is_default=is_default)
 
-        triplet.compile(loss=self.triplet_loss, optimizer=optimizer)
+        triplet.compile(loss=self.get_loss(), optimizer=optimizer)
 
-        history = triplet.fit(self.data_generator(X_train, y_train, batch_size),
-                              steps_per_epoch=steps_per_epoch,
-                              epochs=epochs,
-                              verbose=1,
-                              callbacks=[lr_schedule, early_stopping, test_cb])
-        apply_pca(self.model, X_train, y_train)
+        if is_default:
+            history = triplet.fit(self.data_generator(X_train, y_train, batch_size),
+                                  steps_per_epoch=steps_per_epoch,
+                                  epochs=epochs,
+                                  verbose=1,
+                                  callbacks=[lr_schedule, early_stopping, test_cb])
+        else:
+            history = triplet.fit(X_train, y_train,
+                                  validation_data=(x_test, y_test),
+                                  steps_per_epoch=steps_per_epoch,
+                                  epochs=epochs,
+                                  verbose=1,
+                                  callbacks=[lr_schedule, early_stopping, test_cb])
         return history
