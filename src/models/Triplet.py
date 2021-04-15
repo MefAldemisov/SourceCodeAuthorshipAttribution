@@ -59,6 +59,31 @@ class Triplet(Model):
         negative_dist = tf.reduce_mean(tf.square(anchor - negative), axis=1)
         return tf.maximum(positive_dist - negative_dist + alpha, 0.)
 
+    def hard_triplet_loss(self, _, y_pred):
+        """
+        :param y_pred: the distances, predicted for the triplet
+        :return:
+        """
+        # select the array of dist(anchor, positive)
+        # select the array of dist(anchor, negative)
+        alpha = 0.5
+        selection_percent = 0.01
+        selection_num = selection_percent*self.output_size
+
+        y_pred = tf.convert_to_tensor(y_pred)
+
+        anchor = y_pred[:, :self.output_size]
+        positive = y_pred[:, self.output_size:2 * self.output_size]
+        negative = y_pred[:, 2 * self.output_size:]
+
+        positive_dist = tf.square(anchor - positive)
+        negative_dist = tf.square(anchor - negative)
+
+        # sort both arrays
+        sorted_pos = tf.sort(positive_dist, axis=1, direction='DESCENDING')[:selection_num]
+        sorted_neg = tf.sort(negative_dist, axis=1, direction='ASCENDING')[:selection_num]
+        return tf.maximum(tf.reduce_mean(sorted_pos, axis=1) - tf.reduce_mean(sorted_neg, axis=1)+alpha, 0.)
+
     def create_triplet_model(self):
         input_anchor = layers.Input(shape=self.input_size)
         input_positive = layers.Input(shape=self.input_size)
@@ -76,7 +101,7 @@ class Triplet(Model):
 
     def get_loss(self):
         if self.triplet_type == "default":
-            return self.triplet_loss
+            return self.hard_triplet_loss
         elif self.triplet_type == "hard":
             return tfa.losses.TripletHardLoss(margin=0.2)
         elif self.triplet_type == "semi_hard":
@@ -111,18 +136,19 @@ class Triplet(Model):
                                self.create_model(), input_size=self.input_size, is_default=is_default)
 
         triplet.compile(loss=self.get_loss(), optimizer=optimizer)
+        cbks = [lr_schedule, early_stopping, test_cb]
 
         if is_default:
             history = triplet.fit(self.data_generator(X_train, y_train, batch_size),
                                   steps_per_epoch=steps_per_epoch,
                                   epochs=epochs,
                                   verbose=1,
-                                  callbacks=[lr_schedule, early_stopping, test_cb])
+                                  callbacks=cbks)
         else:
             history = triplet.fit(X_train, y_train,
                                   validation_data=(x_test, y_test),
                                   steps_per_epoch=steps_per_epoch,
                                   epochs=epochs,
                                   verbose=1,
-                                  callbacks=[lr_schedule, early_stopping, test_cb])
+                                  callbacks=cbks)
         return history

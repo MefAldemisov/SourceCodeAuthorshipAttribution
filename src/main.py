@@ -6,14 +6,12 @@ from models.Conv2D import Conv2D
 # classification = Classification(make_initial_preprocess=False)
 # history = classification.train(2, 32)
 
-embedding = Embedding(make_initial_preprocess=False)
+embedding = Embedding(make_initial_preprocess=False, triplet_type="default")
 print("Embedding model summary", embedding.model.summary(), sep='\n')
-embedding.train(batch_size=128, epochs=10)
+embedding.train(batch_size=1024, epochs=6)
+#
+# linear = Linear(make_initial_preprocess=False, triplet_type="default")
+# linear.train(batch_size=1024, epochs=10)
 
-
-# linear = Linear(make_initial_preprocess=False)
-# linear.train(batch_size=128, epochs=1)
-
-# conv2d = Conv2D(make_initial_preprocess=False)
+# conv2d = Conv2D(make_initial_preprocess=False, triplet_type="default")
 # conv2d.train(batch_size=128, epochs=1)
-

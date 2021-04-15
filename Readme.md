@@ -23,3 +23,6 @@
 1. `Model` - root class (interface for all models)
 2. `Triplet(Model)` - triplet-loss specific methods (batch generation, fit process, full model creation e.t.c)
 3. `Embedding(Triplet)` - actual realization of the target architecture
+
+## Usefull links
+- [Tensorflow addons, hard triplet loss](https://github.com/tensorflow/addons/blob/30c8a7094f3bdcca5cc26fc88c1e33f022782266/tensorflow_addons/losses/triplet.py#L204)

@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 
 class TestCallback(callbacks.Callback):
 
-    def __init__(self, X, y, empty_model=None, threshold=0.2, input_size=500, is_default=False):
+    def __init__(self, X, y, empty_model=None, threshold=0.5, input_size=500, is_default=False):
         """
         Parameters:
         - `X, y` - np.arrays with data (tokens) and labels (numerical representation of authors)
@@ -23,7 +23,8 @@ class TestCallback(callbacks.Callback):
         self.is_default = is_default
         self.threshold = threshold
         self.input_size = input_size
-        index = np.where(y < 5)[0]
+        self.n_authors = 8
+        index = np.where(y < self.n_authors)[0]
         print("Length", len(index))
         self.X = X[index]
         self.y = y[index]
@@ -38,11 +39,11 @@ class TestCallback(callbacks.Callback):
         weights = self.model.layers[3].get_weights()
         self.local_model.set_weights(weights)
 
-    def apply_pca(self, transformed_x, n_authors=5):
+    def apply_pca(self, transformed_x):
         pca = PCA(n_components=3)
         x_pca = pca.fit_transform(transformed_x)
         plt.figure(figsize=(10, 8))
-        for developer in range(n_authors):
+        for developer in range(self.n_authors):
             indexes = np.where(self.y == developer)
             plt.plot(x_pca[indexes][0], x_pca[indexes][1], "o-", ms=3)
         plt.savefig("../outputs/pca/pca_{}.png".format(self.n))
