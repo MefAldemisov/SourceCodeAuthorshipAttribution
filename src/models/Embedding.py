@@ -10,10 +10,12 @@ from src.data_processing.commons import std_initial_preprocess
 
 class Embedding(Triplet):
 
-    def __init__(self, input_size=600, output_size=50, make_initial_preprocess=True, max_val=99756+1):
+    def __init__(self, triplet_type="default", input_size=600, output_size=50,
+                 make_initial_preprocess=True, max_val=99756+1):
         self.max_val = max_val
-        super().__init__("embedding", input_size, output_size,
-                         make_initial_preprocess=make_initial_preprocess)
+        super().__init__(name="embedding",
+                         input_size=input_size, output_size=output_size,
+                         make_initial_preprocess=make_initial_preprocess, triplet_type=triplet_type)
 
     def create_model(self, activation="linear", L2_lambda=0.02,
                      conv_1_size=64, conv_2_size=16, emb_height=100):

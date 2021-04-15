@@ -10,12 +10,12 @@ from src.data_processing.commons import std_initial_preprocess
 
 class Linear(Triplet):
 
-    def __init__(self, input_size=600, output_size=50, make_initial_preprocess=True):
+    def __init__(self, input_size=600, output_size=50, make_initial_preprocess=True, triplet_type="default"):
         # name left the same, because training data and its preprocessing are the same
         # as for 'Embedding(Triplet)'
 
-        super().__init__("embedding", input_size, output_size,
-                         make_initial_preprocess=make_initial_preprocess)
+        super().__init__("embedding", input_size=input_size, output_size=output_size,
+                         make_initial_preprocess=make_initial_preprocess, triplet_type=triplet_type)
 
     def create_model(self, activation="linear", L2_lambda=0.02,
                      pool_1_size=4, pool_2_size=4,
