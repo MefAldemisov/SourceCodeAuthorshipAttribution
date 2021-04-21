@@ -23,7 +23,7 @@ class TestCallback(callbacks.Callback):
         self.is_default = is_default
         self.threshold = threshold
         self.input_size = input_size
-        self.n_authors = 8
+        self.n_authors = 20
         index = np.where(y < self.n_authors)[0]
         print("Length", len(index))
         self.X = X[index]
