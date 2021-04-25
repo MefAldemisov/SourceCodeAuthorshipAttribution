@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 
 class TestCallback(callbacks.Callback):
 
-    def __init__(self, X, y, empty_model=None, threshold=0.5, input_size=500, is_default=False):
+    def __init__(self, X, y, empty_model=None, threshold=0.1, input_size=500, is_default=False):
         """
         Parameters:
         - `X, y` - np.arrays with data (tokens) and labels (numerical representation of authors)
@@ -25,7 +25,6 @@ class TestCallback(callbacks.Callback):
         self.input_size = input_size
         self.n_authors = 20
         index = np.where(y < self.n_authors)[0]
-        print("Length", len(index))
         self.X = X[index]
         self.y = y[index]
         self.scores = []
@@ -49,12 +48,9 @@ class TestCallback(callbacks.Callback):
         plt.savefig("../outputs/pca/pca_{}.png".format(self.n))
         self.n += 1
 
-    def on_epoch_end(self, epoch, logs=None):
-        if self.is_default:
-            self._recreate_model()
-            transformed_x = self.local_model.predict(self.X.reshape(-1, self.input_size))
-        else:
-            transformed_x = self.model.predict(self.X.reshape(-1, self.input_size))
+    def on_epoch_end(self, model, epoch, logs=None):
+
+        transformed_x = model.predict(self.X.reshape(-1, self.input_size))
 
         y_pred = []
         y_true = []

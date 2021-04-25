@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tqdm
 
 from models.Model import Model
 import tensorflow_addons as tfa
@@ -46,9 +47,9 @@ class Triplet(Model):
         indexes = np.random.choice(indexes, batch_size)
 
         batch, labels = X[indexes], y[indexes]
-        # print("BATCH", batch.shape, labels.shape, indexes, files_with_labels, batch_size)
-        return tf.convert_to_tensor(batch, np.float32), \
-               tf.convert_to_tensor(labels.reshape(-1, 1), np.int32)
+        batch = tf.convert_to_tensor(batch, np.float32)
+        labels = tf.convert_to_tensor(labels.reshape(-1, 1), np.int32)
+        return batch, labels
 
     def data_generator(self, X, y, batch_size=32):
         while True:
@@ -59,7 +60,7 @@ class Triplet(Model):
                                                  output_types=(tf.float32, tf.int32),
                                                  output_shapes=((batch_size, self.input_size), (batch_size, 1))
                                                  )
-        dataset = dataset.repeat(epochs).batch(batch_size)
+        dataset = dataset.repeat(epochs).batch(1)
         print(dataset)
         return dataset
 
@@ -71,27 +72,28 @@ class Triplet(Model):
         return tf.math.divide_no_nan(vector,
                                      tf.sqrt(tf.reduce_sum(tf.square(vector))))
 
-    def get_distance(self, start, end, type="eucl"):
+    def get_distance(self, start, end, metric="euclidean"):
         """
-        :param start:
-        :param end:
-        :param type: str in ["eucl", "cos"|]
-        :return:
+        :param start: tensor, float32
+        :param end: tensor, float32
+        :param metric: str in ["euclidean", "cos"|]
+        :return: distance between `start` and `end` vectors
         """
-        assert type in ["eucl", "cos"]
-        if type == "eucl":
+        assert metric in ["euclidean", "cos"]
+        if metric == "euclidean":
             return tf.square(start - end)
-        elif type == "cos":
+        elif metric == "cos":
             # angular distance(a, p) = a*p (element-wise)/sqrt(sum(square(a)))/sqrt(sum(square(p)))
             # definition of cos distance https://reference.wolfram.com/language/ref/CosineDistance.html?view=all
             start, end = self.normalize(start), self.normalize(end)
-            product = tf.math.multiply(start, end)
+            product = tf.reduce_sum(tf.math.multiply(start, end))
             return product
 
         return None
 
     def hard_triplet_loss(self, y_true, y_pred):
         """
+        :param y_true: labels of the source code authors
         :param y_pred: the distances, predicted for the triplet
         :return:
         """
@@ -99,47 +101,32 @@ class Triplet(Model):
         # select the array of dist(anchor, negative)
 
         # TODO: made .self
-        alpha = 0.5
+        alpha = 0.1
         dist = "cos"
-        batch_size = 1024
-        print("Y true", y_true, y_true.shape)
-
-        y_pred = tf.convert_to_tensor(y_pred)
-        y_true = tf.convert_to_tensor(y_true)
+        batch_size = 128
 
         # Compute pairwise distances
         ax_0 = tf.range(batch_size)
         ax_1 = tf.range(batch_size)
 
         grid = tf.meshgrid(ax_0, ax_1)
-        stack = tf.stack(grid)
+        stack = tf.stack(grid, axis=2)
         indexes = tf.reshape(stack, (-1, 2))
 
-        y_pred = tf.cast(y_pred, tf.dtypes.float32)
-        distances = tf.map_fn(lambda a: self.get_distance(y_pred[a[0]], y_pred[a[1]], type=dist), indexes)
+        distances = tf.map_fn(lambda a: self.get_distance(y_pred[a[0]], y_pred[a[1]], metric=dist),
+                              indexes, dtype=tf.float32)
+        distances = tf.reshape(distances, (-1, 1))
 
-        y_true = tf.reshape(y_true, [batch_size, 1])
-        y_y, y_x = tf.meshgrid(y_true, y_true)
-        # print("grid", y_y.shape)
-        # Select positive pairs (masking)
-        equal_1 = tf.reshape(tf.math.equal(y_y, y_x), (-1, 1))
-        equal = tf.reshape(tf.math.equal(y_y, y_x), (-1, 1)) # probably many errors and 2^50
-        for i in range(1, self.output_size):
-            equal = tf.concat([equal, equal_1], axis=1)
-            # print("for", equal.shape)
-
-        # print("EQ", equal.shape)
-        # Select negative pairs
+        # separate negative and positive examples
+        y_y, y_x = tf.meshgrid(tf.transpose(y_true), y_true)
+        equal = tf.reshape(tf.math.equal(y_y, y_x), (-1, 1))
         n_equal = tf.math.logical_not(equal)
+        equal, n_equal = tf.cast(equal, tf.float32), tf.cast(n_equal, tf.float32)
 
-        print("Shape1", distances.shape, equal.shape)
+        positive_dist = tf.math.multiply(distances, equal)
+        negative_dist = tf.math.multiply(distances, n_equal)
 
-        positive_dist = tf.boolean_mask(distances, equal)
-        negative_dist = tf.boolean_mask(distances, n_equal)
-
-        print("Shape2", positive_dist.shape, negative_dist.shape, type(alpha))
-        print(positive_dist)
-        return tf.maximum(positive_dist - negative_dist, 0)
+        return tf.maximum(positive_dist - negative_dist + alpha, .0)
 
     def create_triplet_model(self):
         input_anchor = layers.Input(shape=self.input_size)
@@ -167,9 +154,28 @@ class Triplet(Model):
             raise ValueError("Invalid loss_type. Given {}, should be 'default', 'hard' or 'semi_hard'"
                              .format(self.triplet_type))
 
-    # def add_input_layer(self):
-    #     input_layer = layers.Input(shape=self.input_size)
-    #     return models.Model(input_layer, self.model(input_layer))
+    def training_loop(self, epochs, steps_per_epoch, data_generator, optimizer, cbc):
+        loss_function = self.get_loss()
+        history = {"accuracy": [], "recall": [], "loss": []}
+        for epoch in range(epochs):
+            for step in tqdm.tqdm(range(steps_per_epoch)):
+                x, y = next(data_generator)
+                with tf.GradientTape() as tape:
+                    predictions = self.model(x, training=True)
+                    loss = loss_function(y, predictions)
+
+                gradient = tape.gradient(loss, self.model.trainable_weights)
+                optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
+                avg_loss = tf.keras.backend.get_value(tf.math.reduce_mean(loss))
+                accuracy, recall = cbc.on_epoch_end(self.model, step)
+                print("\t Step:", step, "\t loss:", avg_loss, "\t accuracy:", accuracy, "\t recall:", recall)
+
+            history["loss"].append(avg_loss)
+            history["recall"].append(recall)
+            history["accuracy"].append(accuracy)
+            # accuracy, recall = cbc.on_epoch_end(epoch)
+            # print("epoch:", epoch, "\t loss:", loss, "\t accuracy:", accuracy, "\t recall:", recall)
+        return history
 
     def train(self, batch_size: int = 128, epochs: int = 100,
               lr_patience: int = 3, stopping_patience: int = 12):
@@ -190,15 +196,10 @@ class Triplet(Model):
         test_cb = TestCallback(X_train.reshape((-1, self.input_size)), y_train,
                                self.create_model(), input_size=self.input_size, is_default=False)
 
-        self.model.compile(loss=self.get_loss(), optimizer=optimizer)
-        cbks = [lr_schedule, early_stopping, test_cb]
+        callbacks_list = [lr_schedule, early_stopping, test_cb]
 
-        h = self._batches_generator(X_train, y_train)
-        history = self.model.fit(self.dataset_generator(np.array(X_train), np.array(y_train),
-                                                        batch_size=batch_size, epochs=epochs),
-                                steps_per_epoch=steps_per_epoch,
-                                epochs=epochs,
-                                verbose=1,
-                                callbacks=cbks)
-
+        self.model.run_eagerly = True
+        history = self.training_loop(epochs, steps_per_epoch,
+                                     self.data_generator(X_train, y_train, batch_size),
+                                     optimizer, test_cb)
         return history
