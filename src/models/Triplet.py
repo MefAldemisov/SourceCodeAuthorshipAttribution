@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tqdm
 
 from models.Model import Model
 import tensorflow_addons as tfa
@@ -18,97 +19,114 @@ class Triplet(Model):
         self.model = self.create_model()
 
     @staticmethod
-    def _batch_generator(X, y):
-        data_length = X.shape[0]
-        index = np.random.randint(data_length)
-        anchor, anchor_y = X[index], y[index]
-
-        positive = X[np.random.choice(np.where(y == anchor_y)[0])]
-        negative = X[np.random.choice(np.where(y != anchor_y)[0])]
-
-        return [list(anchor), list(positive), list(negative)]
-
-    def _batches_generator(self, X, y, batch_size=32):
+    def _batches_generator(X, y, batch_size=32):
         """
         Array of batch_generator results
+        Selects a few persons in the dataset, then select the appropriate amount
+        Of samples: while amount of files don't exceed the batch size
+        - increase the amount of classes within a batch, the resulted number += batch_size//100
 
         batch_size - size of the generated array
         """
-        all_data = np.array([self._batch_generator(X, y)
-                             for _ in range(batch_size)])
-        anchors = all_data[:, 0, :]
-        positives = all_data[:, 1, :]
-        negatives = all_data[:, 2, :]
-        return anchors, positives, negatives
+        possible_labels = []
+        files_with_labels = 0
+
+        while files_with_labels <= batch_size * 1.1:
+            next_label = np.random.choice(y, 1)
+            # don't to repeat the label:
+            while next_label in possible_labels:
+                next_label = np.random.choice(y)
+
+            possible_labels.append(next_label)
+
+            files_with_labels += len(y[np.where(y == next_label)])
+
+        possible_labels = np.array(possible_labels)
+
+        indexes = np.where(np.isin(y, possible_labels))[0]
+        indexes = np.random.choice(indexes, batch_size)
+
+        batch, labels = X[indexes], y[indexes]
+        batch = tf.convert_to_tensor(batch, np.float32)
+        labels = tf.convert_to_tensor(labels.reshape(-1, 1), np.int32)
+        return batch, labels
 
     def data_generator(self, X, y, batch_size=32):
         while True:
-            batch = self._batches_generator(X, y, batch_size)
-            labels = None
-            yield batch, labels
+            yield self._batches_generator(X, y, batch_size)
 
-    def triplet_loss(self, _, y_pred):
-        alpha = 0.2
-        y_pred = tf.convert_to_tensor(y_pred)
+    def dataset_generator(self, X, y, epochs, batch_size=32):
+        dataset = tf.data.Dataset.from_generator(lambda: self.data_generator(X, y, batch_size=batch_size),
+                                                 output_types=(tf.float32, tf.int32),
+                                                 output_shapes=((batch_size, self.input_size), (batch_size, 1))
+                                                 )
+        dataset = dataset.repeat(epochs).batch(1)
+        print(dataset)
+        return dataset
 
-        anchor = y_pred[:, :self.output_size]
-        positive = y_pred[:, self.output_size:2 * self.output_size]
-        negative = y_pred[:, 2 * self.output_size:]
-
-        positive_dist = tf.reduce_mean(tf.square(anchor - positive), axis=1)
-        negative_dist = tf.reduce_mean(tf.square(anchor - negative), axis=1)
-        return tf.maximum(positive_dist - negative_dist + alpha, 0.)
-
-    def get_distance(self, start, end, type="eucl"):
+    @staticmethod
+    def normalize(vector):
         """
-        :param start:
-        :param end:
-        :param type: str in ["eucl", "cos"|]
-        :return:
+        L2 norm of vector
         """
-        assert type in ["eucl", "cos"]
-        if type == "eucl":
+        return tf.math.divide_no_nan(vector,
+                                     tf.sqrt(tf.reduce_sum(tf.square(vector))))
+
+    def get_distance(self, start, end, metric="euclidean"):
+        """
+        :param start: tensor, float32
+        :param end: tensor, float32
+        :param metric: str in ["euclidean", "cos"|]
+        :return: distance between `start` and `end` vectors
+        """
+        assert metric in ["euclidean", "cos"]
+        if metric == "euclidean":
             return tf.square(start - end)
-        elif type == "cos":
+        elif metric == "cos":
             # angular distance(a, p) = a*p (element-wise)/sqrt(sum(square(a)))/sqrt(sum(square(p)))
             # definition of cos distance https://reference.wolfram.com/language/ref/CosineDistance.html?view=all
-
-            length_func = lambda x: tf.sqrt(tf.reduce_sum(tf.square(x, axis=1)))
-            div_func = lambda x, y: tf.math.divide_no_nan(x, y)
-
-            product = tf.math.multiply(start, end, axis=1)
-            l_start, l_end = length_func(start), length_func(end)
-            distance = div_func(div_func(product, l_start), l_end)
-            return distance
+            start, end = self.normalize(start), self.normalize(end)
+            product = tf.reduce_sum(tf.math.multiply(start, end))
+            return product
 
         return None
 
-    def hard_triplet_loss(self, _, y_pred):
+    def hard_triplet_loss(self, y_true, y_pred):
         """
+        :param y_true: labels of the source code authors
         :param y_pred: the distances, predicted for the triplet
         :return:
         """
         # select the array of dist(anchor, positive)
         # select the array of dist(anchor, negative)
-        alpha = 0.5
-        selection_percent = 0.01
+
+        # TODO: made .self
+        alpha = 0.1
         dist = "cos"
-        selection_num = selection_percent * self.output_size
+        batch_size = 128
 
-        y_pred = tf.convert_to_tensor(y_pred)
+        # Compute pairwise distances
+        ax_0 = tf.range(batch_size)
+        ax_1 = tf.range(batch_size)
 
-        anchor = y_pred[:, :self.output_size]
-        positive = y_pred[:, self.output_size:2 * self.output_size]
-        negative = y_pred[:, 2 * self.output_size:]
+        grid = tf.meshgrid(ax_0, ax_1)
+        stack = tf.stack(grid, axis=2)
+        indexes = tf.reshape(stack, (-1, 2))
 
-        positive_dist = self.get_distance(anchor, positive, dist)
-        negative_dist = self.get_distance(anchor, negative, dist)
+        distances = tf.map_fn(lambda a: self.get_distance(y_pred[a[0]], y_pred[a[1]], metric=dist),
+                              indexes, dtype=tf.float32)
+        distances = tf.reshape(distances, (-1, 1))
 
-        # sort both arrays
-        # sorted_pos = tf.sort(positive_dist, axis=1, direction='DESCENDING')[:selection_num]
-        # sorted_neg = tf.sort(negative_dist, axis=1, direction='ASCENDING')[:selection_num]
+        # separate negative and positive examples
+        y_y, y_x = tf.meshgrid(tf.transpose(y_true), y_true)
+        equal = tf.reshape(tf.math.equal(y_y, y_x), (-1, 1))
+        n_equal = tf.math.logical_not(equal)
+        equal, n_equal = tf.cast(equal, tf.float32), tf.cast(n_equal, tf.float32)
 
-        return tf.maximum(positive_dist - negative_dist + alpha, 0.)
+        positive_dist = tf.math.multiply(distances, equal)
+        negative_dist = tf.math.multiply(distances, n_equal)
+
+        return tf.maximum(positive_dist - negative_dist + alpha, .0)
 
     def create_triplet_model(self):
         input_anchor = layers.Input(shape=self.input_size)
@@ -136,16 +154,35 @@ class Triplet(Model):
             raise ValueError("Invalid loss_type. Given {}, should be 'default', 'hard' or 'semi_hard'"
                              .format(self.triplet_type))
 
-    # def add_input_layer(self):
-    #     input_layer = layers.Input(shape=self.input_size)
-    #     return models.Model(input_layer, self.model(input_layer))
+    def training_loop(self, epochs, steps_per_epoch, data_generator, optimizer, cbc):
+        loss_function = self.get_loss()
+        history = {"accuracy": [], "recall": [], "loss": []}
+        for epoch in range(epochs):
+            for step in tqdm.tqdm(range(steps_per_epoch)):
+                x, y = next(data_generator)
+                with tf.GradientTape() as tape:
+                    predictions = self.model(x, training=True)
+                    loss = loss_function(y, predictions)
+
+                gradient = tape.gradient(loss, self.model.trainable_weights)
+                optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
+                avg_loss = tf.keras.backend.get_value(tf.math.reduce_mean(loss))
+                print("\tAvg loss", avg_loss)
+
+            accuracy, recall = cbc.on_epoch_end(self.model, step)
+            print("Step:", step, "\t loss:", avg_loss, "\t accuracy:", accuracy, "\t recall:", recall)
+
+            history["loss"].append(avg_loss)
+            history["recall"].append(recall)
+            history["accuracy"].append(accuracy)
+            # accuracy, recall = cbc.on_epoch_end(epoch)
+            # print("epoch:", epoch, "\t loss:", loss, "\t accuracy:", accuracy, "\t recall:", recall)
+        return history
 
     def train(self, batch_size: int = 128, epochs: int = 100,
               lr_patience: int = 3, stopping_patience: int = 12):
 
         X_train, x_test, y_train, y_test = self.preprocess()
-        is_default = self.triplet_type == "default"
-        triplet = self.create_triplet_model() if is_default else self.model
         steps_per_epoch = int(X_train.shape[0] / batch_size)
         optimizer = optimizers.Adam(0.1)
         lr_schedule = callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5,
@@ -159,22 +196,12 @@ class Triplet(Model):
         # tb = callbacks.TensorBoard(log_dir="./tensor_board", histogram_freq=1)
 
         test_cb = TestCallback(X_train.reshape((-1, self.input_size)), y_train,
-                               self.create_model(), input_size=self.input_size, is_default=is_default)
+                               self.create_model(), input_size=self.input_size, is_default=False)
 
-        triplet.compile(loss=self.get_loss(), optimizer=optimizer)
-        cbks = [lr_schedule, early_stopping, test_cb]
+        callbacks_list = [lr_schedule, early_stopping, test_cb]
 
-        if is_default:
-            history = triplet.fit(self.data_generator(X_train, y_train, batch_size),
-                                  steps_per_epoch=steps_per_epoch,
-                                  epochs=epochs,
-                                  verbose=1,
-                                  callbacks=cbks)
-        else:
-            history = triplet.fit(X_train, y_train,
-                                  validation_data=(x_test, y_test),
-                                  steps_per_epoch=steps_per_epoch,
-                                  epochs=epochs,
-                                  verbose=1,
-                                  callbacks=cbks)
+        self.model.run_eagerly = True
+        history = self.training_loop(epochs, steps_per_epoch,
+                                     self.data_generator(X_train, y_train, batch_size),
+                                     optimizer, test_cb)
         return history
