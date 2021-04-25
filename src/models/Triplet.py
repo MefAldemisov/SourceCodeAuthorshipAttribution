@@ -167,8 +167,10 @@ class Triplet(Model):
                 gradient = tape.gradient(loss, self.model.trainable_weights)
                 optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
                 avg_loss = tf.keras.backend.get_value(tf.math.reduce_mean(loss))
-                accuracy, recall = cbc.on_epoch_end(self.model, step)
-                print("\t Step:", step, "\t loss:", avg_loss, "\t accuracy:", accuracy, "\t recall:", recall)
+                print("\tAvg loss", avg_loss)
+
+            accuracy, recall = cbc.on_epoch_end(self.model, step)
+            print("Step:", step, "\t loss:", avg_loss, "\t accuracy:", accuracy, "\t recall:", recall)
 
             history["loss"].append(avg_loss)
             history["recall"].append(recall)
