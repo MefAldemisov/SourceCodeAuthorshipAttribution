@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 
 class TestCallback(callbacks.Callback):
 
-    def __init__(self, X, y, empty_model=None, threshold=0.1, input_size=500, is_default=False):
+    def __init__(self, X, y, empty_model=None, threshold=0.1, input_size=500):
         """
         Parameters:
         - `X, y` - np.arrays with data (tokens) and labels (numerical representation of authors)
@@ -20,7 +20,6 @@ class TestCallback(callbacks.Callback):
         to the `empty_model` model (due to the triplet nature of the model)
         """
         super().__init__()
-        self.is_default = is_default
         self.threshold = threshold
         self.input_size = input_size
         self.n_authors = 20
@@ -32,11 +31,6 @@ class TestCallback(callbacks.Callback):
         self.local_model = empty_model
         self.local_model.build((None, self.input_size))
         self.n = 0
-
-    def _recreate_model(self):
-        # 3 - because triplet is about TREE concatenated input layers
-        weights = self.model.layers[3].get_weights()
-        self.local_model.set_weights(weights)
 
     def apply_pca(self, transformed_x):
         pca = PCA(n_components=3)
