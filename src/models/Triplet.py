@@ -121,10 +121,9 @@ class Triplet(Model):
         y_y, y_x = tf.meshgrid(tf.transpose(y_true), y_true)
         equal = tf.reshape(tf.math.equal(y_y, y_x), (-1, 1))
         n_equal = tf.math.logical_not(equal)
-        equal, n_equal = tf.cast(equal, tf.float32), tf.cast(n_equal, tf.float32)
 
-        positive_dist = tf.math.multiply(distances, equal)
-        negative_dist = tf.math.multiply(distances, n_equal)
+        positive_dist =  tf.reduce_mean(tf.boolean_mask(distances, equal))
+        negative_dist =  tf.reduce_mean(tf.boolean_mask(distances, n_equal))
 
         return tf.maximum(positive_dist - negative_dist + alpha, .0)
 
@@ -166,17 +165,17 @@ class Triplet(Model):
 
                 gradient = tape.gradient(loss, self.model.trainable_weights)
                 optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
-                avg_loss = tf.keras.backend.get_value(tf.math.reduce_mean(loss))
-                print("\tAvg loss", avg_loss)
 
-            accuracy, recall = cbc.on_epoch_end(self.model, step)
-            print("Step:", step, "\t loss:", avg_loss, "\t accuracy:", accuracy, "\t recall:", recall)
+                self.model.save("../outputs/model.h")
 
-            history["loss"].append(avg_loss)
-            history["recall"].append(recall)
-            history["accuracy"].append(accuracy)
-            # accuracy, recall = cbc.on_epoch_end(epoch)
-            # print("epoch:", epoch, "\t loss:", loss, "\t accuracy:", accuracy, "\t recall:", recall)
+                loss_val = tf.keras.backend.get_value(loss)
+                accuracy, recall = cbc.on_epoch_end(self.model, step)
+                print("Step:", step, "\t loss:", loss_val, "\t accuracy:", accuracy, "\t recall:", recall)
+
+                history["loss"].append(loss_val)
+                history["recall"].append(recall)
+                history["accuracy"].append(accuracy)
+
         return history
 
     def train(self, batch_size: int = 128, epochs: int = 100,
