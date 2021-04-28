@@ -63,8 +63,12 @@ class Triplet(Model):
         """
         assert metric in ["euclidean", "cos"]
         if metric == "euclidean":
-            return tf.reduce_mean(tf.math.squared_difference(predictions,
-                                                             tf.reshape(predictions, (-1, 1))))
+            # idea is taken from https://omoindrot.github.io/triplet-loss
+            product = tf.matmul(predictions, tf.transpose(predictions))
+            diagonal = tf.linalg.diag_part(product)
+            distances = tf.expand_dims(diagonal, 0) + tf.expand_dims(diagonal, 1) - 2 * product
+            return  tf.maximum(distances, 0.0)
+
         elif metric == "cos":
             # angular distance(a, p) = 1 - a*p (element-wise)/sqrt(sum(square(a)))/sqrt(sum(square(p)))
             # definition of cos distance https://reference.wolfram.com/language/ref/CosineDistance.html?view=all
@@ -87,7 +91,6 @@ class Triplet(Model):
         average distances between same/distinct-labeled predictions.
         """
         distances = self.get_distance(y_pred, metric=distance_metric)
-
         equal = tf.math.equal(tf.transpose(y_true), y_true)
         n_equal = tf.math.logical_not(equal)
 
@@ -97,7 +100,7 @@ class Triplet(Model):
         return tf.maximum(positive_dist - negative_dist + alpha, .0)
 
     def training_loop(self, epochs, steps_per_epoch, data_generator, optimizer, cbc,
-                      alpha=0.2, distance_metric="cos"):
+                      alpha=0.2, distance_metric="euclidean"):
         loss_function = self.hard_triplet_loss
         history = {"accuracy": [], "recall": [], "loss": []}
         for epoch in range(epochs):
@@ -124,7 +127,7 @@ class Triplet(Model):
         return history
 
     def train(self, batch_size: int = 128, epochs: int = 100,
-              distance_metric="cos", alpha=0.1):
+              distance_metric="euclidean", alpha=0.1):
 
         X_train, x_test, y_train, y_test = self.preprocess()
 
