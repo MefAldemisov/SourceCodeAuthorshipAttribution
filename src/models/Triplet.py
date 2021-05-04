@@ -1,10 +1,13 @@
 import numpy as np
 import tensorflow as tf
 import tqdm
+import time #debug
 
 from models.Model import Model
 from training.TrainingCallback import TestCallback
 from tensorflow.keras import optimizers
+# according to the documentation, BallTree is more efficient in high-dimentional case
+from sklearn.neighbors import BallTree
 
 
 class Triplet(Model):
@@ -16,9 +19,9 @@ class Triplet(Model):
         self.input_size = input_size
         self.output_size = output_size
         self.model = self.create_model()
+        self.index = None  # to create the index, the X.shape[0] value should be available
 
-    @staticmethod
-    def _batches_generator(X, y, batch_size=32):
+    def _batches_generator(self, X, y, batch_size=32):
         """
         Array of batch_generator results
         Selects a few persons in the dataset, then select the appropriate amount
@@ -27,24 +30,20 @@ class Triplet(Model):
 
         batch_size - size of the generated array
         """
-        possible_labels = []
-        files_with_labels = 0
+        anchor_y = np.random.choice(y, 1)
+        positive_indexes = np.where(y==anchor_y)[0]
+        # negative indexes generation
+        if self.index != None:
+            anchor_index = np.random.choice(positive_indexes, 1)
+            query = self.model.predict(X[anchor_index])
+            query_res = self.index.query(query, batch_size, return_distance=False)[0]
+            print("print", anchor_y, "\n", query_res)
+            negative_indexes = [neighbour_index for neighbour_index in query_res if y[neighbour_index] != anchor_y]
+        else:  # the first batch generation
+            k = batch_size - positive_indexes.shape[0]
+            negative_indexes = np.random.choice(y[np.where(y!=anchor_y)[0]], k)
 
-        while files_with_labels <= batch_size * 1.1:
-            next_label = np.random.choice(y, 1)
-            # don't to repeat the label:
-            while next_label in possible_labels:
-                next_label = np.random.choice(y)
-
-            possible_labels.append(next_label)
-
-            files_with_labels += len(y[np.where(y == next_label)])
-
-        possible_labels = np.array(possible_labels)
-
-        indexes = np.where(np.isin(y, possible_labels))[0]
-        indexes = np.random.choice(indexes, batch_size)
-
+        indexes = np.append(positive_indexes, negative_indexes)
         batch, labels = X[indexes], y[indexes]
         batch = tf.convert_to_tensor(batch, np.float32)
         labels = tf.convert_to_tensor(labels.reshape(-1, 1), np.int32)
@@ -67,12 +66,12 @@ class Triplet(Model):
             product = tf.matmul(predictions, tf.transpose(predictions))
             diagonal = tf.linalg.diag_part(product)
             distances = tf.expand_dims(diagonal, 0) + tf.expand_dims(diagonal, 1) - 2 * product
-            return  tf.maximum(distances, 0.0)
+            return tf.maximum(distances, 0.0)
 
         elif metric == "cos":
             # angular distance(a, p) = 1 - a*p (element-wise)/sqrt(sum(square(a)))/sqrt(sum(square(p)))
             # definition of cos distance https://reference.wolfram.com/language/ref/CosineDistance.html?view=all
-            predictions = tf.math.l2_normalize(predictions, axis=1)  # self.normalize(end)
+            predictions = tf.math.l2_normalize(predictions, axis=1)
             product = tf.maximum(1 - tf.matmul(predictions, tf.transpose(predictions)), .0)
             return product
 
@@ -99,7 +98,7 @@ class Triplet(Model):
 
         return tf.maximum(positive_dist - negative_dist + alpha, .0)
 
-    def training_loop(self, epochs, steps_per_epoch, data_generator, optimizer, cbc,
+    def training_loop(self, all_x, epochs, steps_per_epoch, data_generator, optimizer, cbc,
                       alpha=0.2, distance_metric="euclidean"):
         loss_function = self.hard_triplet_loss
         history = {"accuracy": [], "recall": [], "loss": []}
@@ -111,25 +110,37 @@ class Triplet(Model):
                     loss = loss_function(y, predictions, alpha=alpha,
                                          distance_metric=distance_metric)
 
+                # update gradient
                 gradient = tape.gradient(loss, self.model.trainable_weights)
                 optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
 
+                # save model
                 self.model.save("../outputs/model.h")
-
+                # print statistics
                 loss_val = tf.keras.backend.get_value(loss)
                 accuracy, recall = cbc.on_epoch_end(self.model, step)
                 print("Step:", step, "\t loss:", loss_val, "\t accuracy:", accuracy, "\t recall:", recall)
-
+                # save statistics
                 history["loss"].append(loss_val)
                 history["recall"].append(recall)
                 history["accuracy"].append(accuracy)
 
+            # update index
+            predictions = self.model.predict(all_x)
+            if distance_metric == "cos":
+                # https://stackoverflow.com/a/34145444/9154188
+                predictions = np.linalg.norm(predictions, 2)
+            self.index = BallTree(predictions, metric="euclidean")
+
+
         return history
 
-    def train(self, batch_size: int = 128, epochs: int = 100,
+    def train(self, batch_size: int = 64, epochs: int = 100,
               distance_metric="euclidean", alpha=0.1):
 
         X_train, x_test, y_train, y_test = self.preprocess()
+        # # the distance metric selected according to https://stackoverflow.com/a/34145444/9154188
+        # self.index = BallTree(np.zeros((X_train.shape[0], self.output_size)), metric="euclidean")
 
         steps_per_epoch = int(X_train.shape[0] / batch_size)
         optimizer = optimizers.Adam(0.1)
@@ -139,7 +150,7 @@ class Triplet(Model):
                                threshold=alpha)
 
         # self.model.run_eagerly = True
-        history = self.training_loop(epochs, steps_per_epoch,
+        history = self.training_loop(X_train, epochs, steps_per_epoch,
                                      self.data_generator(X_train, y_train, batch_size),
                                      optimizer, test_cb, alpha=alpha,
                                      distance_metric=distance_metric)
