@@ -54,13 +54,13 @@ class Conv2D(Triplet):
         df["max_cpl"] = df.flines.apply(max_cpl)
         df = df[df.max_cpl <= self.img_x]
         # select users
-        users = df.username.value_counts()[0:650].index
+        users = df.username.value_counts()[0:500].index
         df = df[df.username.isin(users)]
         # string to int for y
         le = LabelEncoder()
         df.username = le.fit_transform(df.username)
 
-        def vectorize(file):
+        def to_vector(file):
             lines = file.split('\n')
             res = np.zeros((self.img_y, self.img_x), dtype=int)
             for i in range(len(lines)):
@@ -71,7 +71,7 @@ class Conv2D(Triplet):
                     res[i][j] = ord(line[j])
             return res.tolist()
 
-        X = df.flines.apply(vectorize).values
+        X = df.flines.apply(to_vector).values
         X = np.array([np.array(x) for x in X])
 
         ss = StandardScaler()

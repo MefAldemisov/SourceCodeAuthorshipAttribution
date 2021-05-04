@@ -18,8 +18,10 @@ class Embedding(Triplet):
                          make_initial_preprocess=make_initial_preprocess, triplet_type=triplet_type)
 
     def create_model(self, activation="linear", L2_lambda=0.02,
-                     conv_1_size=64, conv_2_size=16, emb_height=100):
+                     conv_1_size=4, conv_2_size=4, emb_height=100):
 
+        conv_1_channels = 1
+        conv_2_channels = 1
         model_core = keras.Sequential()
         model_core.add(layers.Embedding(self.max_val, emb_height,
                                         mask_zero=True, input_length=self.input_size))
@@ -27,16 +29,16 @@ class Embedding(Triplet):
         model_core.add(layers.Reshape((self.input_size, emb_height, 1)))
         model_core.add(layers.Dropout(0.5))
 
-        model_core.add(layers.Conv2D(16, (conv_1_size, emb_height), padding="same", activation=activation,
+        model_core.add(layers.Conv2D(conv_1_channels, (conv_1_size, emb_height), padding="same", activation=activation,
                                      kernel_regularizer=regularizers.L2(L2_lambda),
                                      input_shape=(1, self.input_size, emb_height), data_format="channels_last"))
 
-        model_core.add(layers.Conv2D(16, (conv_2_size, emb_height), activation=activation, padding="same",
+        model_core.add(layers.Conv2D(conv_2_channels, (conv_2_size, emb_height), activation=activation, padding="same",
                                      kernel_regularizer=regularizers.L2(L2_lambda),
                                      input_shape=(1, self.input_size, emb_height), data_format="channels_last"))
 
         model_core.add(layers.MaxPooling2D(pool_size=(self.input_size, 1), data_format="channels_last"))
-        model_core.add(layers.Reshape((-1, emb_height*16)))
+        model_core.add(layers.Reshape((-1, emb_height*conv_2_channels)))
 
         model_core.add(layers.Flatten())
 
