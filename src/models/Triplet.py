@@ -31,17 +31,19 @@ class Triplet(Model):
         batch_size - size of the generated array
         """
         anchor_y = np.random.choice(y, 1)
-        positive_indexes = np.where(y==anchor_y)[0]
+        positive_indexes = np.where(y == anchor_y)[0]
         # negative indexes generation
+        k = batch_size - positive_indexes.shape[0]
+
         if self.index != None:
             anchor_index = np.random.choice(positive_indexes, 1)
             query = self.model.predict(X[anchor_index])
             query_res = self.index.query(query, batch_size, return_distance=False)[0]
-            print("print", anchor_y, "\n", query_res)
-            negative_indexes = [neighbour_index for neighbour_index in query_res if y[neighbour_index] != anchor_y]
+            negative_indexes = np.array([neighbour_index for neighbour_index in query_res
+                                         if y[neighbour_index] != anchor_y])[:k]
+            # print("anchor_y", anchor_y, "\nquery", query, "\nanchor_index", anchor_index,  "\n", query_res, "negative_indexes", negative_indexes)
         else:  # the first batch generation
-            k = batch_size - positive_indexes.shape[0]
-            negative_indexes = np.random.choice(y[np.where(y!=anchor_y)[0]], k)
+            negative_indexes = np.random.choice(y[np.where(y != anchor_y)[0]], k)
 
         indexes = np.append(positive_indexes, negative_indexes)
         batch, labels = X[indexes], y[indexes]
@@ -125,18 +127,17 @@ class Triplet(Model):
                 history["recall"].append(recall)
                 history["accuracy"].append(accuracy)
 
-            # update index
-            predictions = self.model.predict(all_x)
-            if distance_metric == "cos":
-                # https://stackoverflow.com/a/34145444/9154188
-                predictions = np.linalg.norm(predictions, 2)
-            self.index = BallTree(predictions, metric="euclidean")
-
+                # update index
+                predictions = self.model.predict(all_x)
+                # if distance_metric == "cos":
+                #     # https://stackoverflow.com/a/34145444/9154188
+                #     predictions /= np.linalg.norm(predictions, 2)
+                self.index = BallTree(predictions, metric="euclidean")
 
         return history
 
     def train(self, batch_size: int = 64, epochs: int = 100,
-              distance_metric="euclidean", alpha=0.1):
+              distance_metric="cos", alpha=0.1):
 
         X_train, x_test, y_train, y_test = self.preprocess()
         # # the distance metric selected according to https://stackoverflow.com/a/34145444/9154188

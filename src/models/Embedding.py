@@ -25,6 +25,7 @@ class Embedding(Triplet):
         model_core = keras.Sequential()
         model_core.add(layers.Embedding(self.max_val, emb_height,
                                         mask_zero=True, input_length=self.input_size))
+        model_core.add(layers.LayerNormalization(axis=2))
 
         model_core.add(layers.Reshape((self.input_size, emb_height, 1)))
         model_core.add(layers.Dropout(0.5))
@@ -44,6 +45,8 @@ class Embedding(Triplet):
 
         model_core.add(layers.Dropout(0.5))
         model_core.add(layers.Dense(self.output_size))
+        model_core.add(layers.LayerNormalization())
+
         return model_core
 
     @staticmethod
