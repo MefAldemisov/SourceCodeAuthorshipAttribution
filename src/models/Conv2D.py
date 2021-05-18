@@ -33,11 +33,16 @@ class Conv2D(Triplet):
         model_core.add(layers.Dense(self.output_size, activation="tanh"))
         return model_core
 
+    @staticmethod
+    def _path_to_x(y_path):
+        x_path = y_path[:-4]  # json removed
+        x_path += "txt"
+        return x_path
+
     def initial_preprocess(self, df_path, tmp_dataset_filename):
         df = pd.read_csv(df_path)
         df = df.drop(columns=["round", "task", "solution", "file", "full_path", "Unnamed: 0.1", "Unnamed: 0", "lang"])
         df["n_lines"] = df.flines.apply(lambda x: str(x).count("\n"))
-        df["n_lines"].describe()
         df = df[(df.n_lines >= 30) & (df.n_lines < self.img_y)]  # there should be enough loc for 2D convolution
 
         def max_cpl(file):
@@ -73,19 +78,23 @@ class Conv2D(Triplet):
 
         X = df.flines.apply(to_vector).values
         X = np.array([np.array(x) for x in X])
-
+        # scale
         ss = StandardScaler()
         X = ss.fit_transform(X.reshape((-1, self.img_y * self.img_x))).reshape((-1, self.img_y, self.img_x))
-        X = X.tolist()
-
-        df["vectors"] = X
-        dataset = df[["username", "vectors"]]
+        # save X and y separately
+        x_file = open(self._path_to_x(tmp_dataset_filename), "wb")
+        np.save(x_file, X)
+        x_file.close()
+        dataset = df[["username"]]
         dataset.to_json(tmp_dataset_filename)
 
     def secondary_preprocess(self, tmp_dataset_filename):
         df = pd.read_json(tmp_dataset_filename)
-        print("readen")
-        X = np.array(df.vectors.values.tolist()).reshape(-1, self.img_y * self.img_x)
         y = np.array(df.username)
+        # read X
+        file = open(self._path_to_x(tmp_dataset_filename), "rb")
+        X = np.load(file)
+        file.close()
+        # train-test split
         X_train, X_test, y_train, y_test = train_test_split(X, y)
         return X_train, X_test, y_train, y_test
