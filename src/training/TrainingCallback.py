@@ -22,7 +22,7 @@ class TestCallback(callbacks.Callback):
         super().__init__()
         self.threshold = threshold
         self.input_size = input_size
-        self.n_authors = 20
+        self.n_authors = 10
         index = np.where(y < self.n_authors)[0]
         self.X = X[index]
         self.y = y[index]
@@ -70,7 +70,6 @@ class TestCallback(callbacks.Callback):
 
         self.scores.append(score)
         self.recalls.append(recall)
-        print("accuracy:", round(score, 4), "recall:", round(recall, 4))
         self.apply_pca(transformed_x)
         return score, recall
 

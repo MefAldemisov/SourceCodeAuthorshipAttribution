@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 import tqdm
-import time #debug
 
 from models.Model import Model
 from training.TrainingCallback import TestCallback
@@ -144,7 +143,7 @@ class Triplet(Model):
         # self.index = BallTree(np.zeros((X_train.shape[0], self.output_size)), metric="euclidean")
 
         steps_per_epoch = int(X_train.shape[0] / batch_size)
-        optimizer = optimizers.Adam(0.1)
+        optimizer = optimizers.Adam(0.01)
 
         test_cb = TestCallback(X_train.reshape((-1, self.input_size)), y_train,
                                self.create_model(), input_size=self.input_size,
