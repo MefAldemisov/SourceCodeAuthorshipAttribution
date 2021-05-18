@@ -38,8 +38,9 @@ class TestCallback(callbacks.Callback):
         plt.figure(figsize=(10, 8))
         for developer in range(self.n_authors):
             indexes = np.where(self.y == developer)
-            plt.plot(x_pca[indexes][0], x_pca[indexes][1], "o-", ms=3)
+            plt.plot(x_pca[indexes][0], x_pca[indexes][1], "o", ms=5)
         plt.savefig("../outputs/pca/pca_{}.png".format(self.n))
+        plt.close('all')
         self.n += 1
 
     def on_epoch_end(self, model, epoch, logs=None):
