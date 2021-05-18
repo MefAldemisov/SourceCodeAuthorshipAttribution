@@ -7,13 +7,11 @@
    
       2.1 `data_processing/` - work with direct GCJ (time-consuming)
    
-      2.2 `models/` - main directory
+      2.2 `models/` - main directory with the models with the inheritance hierarchy, described below
    
-      2.3 `training/` - things, which are used by the models
+      2.3 `training/` - things, which are used by the models: `GridSearch` methods and `Training callback`
    
-      2.4 `visualization/`
-   
-      2.5 `main.py` - **starting point**
+      2.4 `main.py` - **starting point**
    
 3. `outputs` - images, models e.t.c
 
@@ -24,5 +22,5 @@
 2. `Triplet(Model)` - triplet-loss specific methods (batch generation, fit process, full model creation e.t.c)
 3. `Embedding(Triplet)` - actual realization of the target architecture
 
-## Usefull links
+## Useful links
 - [Tensorflow addons, hard triplet loss](https://github.com/tensorflow/addons/blob/30c8a7094f3bdcca5cc26fc88c1e33f022782266/tensorflow_addons/losses/triplet.py#L204)

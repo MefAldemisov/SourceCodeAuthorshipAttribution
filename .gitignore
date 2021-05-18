@@ -21,3 +21,8 @@ old_notebooks/*
 .python-version
 .idea*
 .idea/*
+/outputs/model.h/
+/outputs/model_embedding.h/
+*.bz2
+*.zip
+/src/visualization/*
