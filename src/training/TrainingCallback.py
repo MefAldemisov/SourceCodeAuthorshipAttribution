@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from tensorflow.keras import callbacks
 from sklearn.metrics import accuracy_score, confusion_matrix
 
@@ -33,14 +33,14 @@ class TestCallback(callbacks.Callback):
         self.n = 0
 
     def apply_pca(self, transformed_x, epoch):
-        pca = PCA(n_components=3)
-        x_pca = pca.fit_transform(transformed_x)
+        tsne = TSNE(n_components=2)
+        x_pca = tsne.fit_transform(transformed_x)
         plt.figure(figsize=(10, 8))
-        plt.title("Step {} (epoch {})".format(self.n, epoch))
+        plt.title("Step {} (epoch {})".format(self.n, self.n//125))
         for developer in range(self.n_authors):
             indexes = np.where(self.y == developer)[0]
             plt.plot(x_pca[indexes, 0], x_pca[indexes, 1], "o", ms=5)
-        plt.savefig("../outputs/pca/pca_{}.png".format(self.n))
+        plt.savefig("../outputs/tsne_conv2d/tsne_{}.png".format(self.n))
         plt.close('all')
         self.n += 1
 
