@@ -32,13 +32,14 @@ class TestCallback(callbacks.Callback):
         self.local_model.build((None, self.input_size))
         self.n = 0
 
-    def apply_pca(self, transformed_x):
+    def apply_pca(self, transformed_x, epoch):
         pca = PCA(n_components=3)
         x_pca = pca.fit_transform(transformed_x)
         plt.figure(figsize=(10, 8))
+        plt.title("Step {} (epoch {})".format(self.n, epoch))
         for developer in range(self.n_authors):
-            indexes = np.where(self.y == developer)
-            plt.plot(x_pca[indexes][0], x_pca[indexes][1], "o", ms=5)
+            indexes = np.where(self.y == developer)[0]
+            plt.plot(x_pca[indexes, 0], x_pca[indexes, 1], "o", ms=5)
         plt.savefig("../outputs/pca/pca_{}.png".format(self.n))
         plt.close('all')
         self.n += 1
@@ -70,7 +71,7 @@ class TestCallback(callbacks.Callback):
 
         self.scores.append(score)
         self.recalls.append(recall)
-        self.apply_pca(transformed_x)
+        self.apply_pca(transformed_x, epoch)
         return score, recall
 
     def return_results(self):
