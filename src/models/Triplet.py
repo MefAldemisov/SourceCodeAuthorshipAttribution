@@ -5,7 +5,7 @@ import tqdm
 from models.Model import Model
 from training.TrainingCallback import TestCallback
 from tensorflow.keras import optimizers, callbacks
-# according to the documentation, BallTree is more efficient in high-dimentional case
+# according to the documentation, BallTree is more efficient in high-dimensional case
 from sklearn.neighbors import BallTree
 
 
@@ -34,13 +34,12 @@ class Triplet(Model):
         # negative indexes generation
         k = batch_size - positive_indexes.shape[0]
 
-        if self.index != None:
+        if self.index is not None:
             anchor_index = np.random.choice(positive_indexes, 1)
             query = self.model.predict(X[anchor_index])
             query_res = self.index.query(query, batch_size, return_distance=False)[0]
             negative_indexes = np.array([neighbour_index for neighbour_index in query_res
                                          if y[neighbour_index] != anchor_y])[:k]
-            # print("anchor_y", anchor_y, "\nquery", query, "\nanchor_index", anchor_index,  "\n", query_res, "negative_indexes", negative_indexes)
         else:  # the first batch generation
             negative_indexes = np.random.choice(y[np.where(y != anchor_y)[0]], k)
 
@@ -99,15 +98,23 @@ class Triplet(Model):
 
         return tf.maximum(positive_dist - negative_dist + alpha, .0)
 
+    def on_batch_end(self, loss, cbc, step, all_x):
+        # save model
+        self.model.save("../outputs/{}.h".format(self.name))
+        # update statistics
+        loss_val = tf.keras.backend.get_value(loss)
+        cbc.on_epoch_end(self.model, step, loss=loss_val)
+        # update index
+        predictions = self.model.predict(all_x)
+        self.index = BallTree(predictions, metric="euclidean")
+
     def training_loop(self, all_x, epochs, steps_per_epoch, data_generator, optimizer, cbc, lrs,
                       tensorboard, alpha=0.2, distance_metric="euclidean"):
         loss_function = self.hard_triplet_loss
+
         tensorboard.set_model(self.model)
-        history = {"accuracy": [], "recall": [], "loss": []}
         for epoch in range(epochs):
-            # tensorboard.on_epoch_begin(epoch)
             for step in tqdm.tqdm(range(steps_per_epoch)):
-                # tensorboard.on_train_batch_begin(step)
                 x, y = next(data_generator)
                 with tf.GradientTape() as tape:
                     predictions = self.model(x, training=True)
@@ -117,49 +124,24 @@ class Triplet(Model):
                 # update gradient
                 gradient = tape.gradient(loss, self.model.trainable_weights)
                 optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
+                self.on_batch_end(loss, cbc, step, all_x)
 
-                # save model
-                self.model.save("../outputs/model.h")
-                # print statistics
-                loss_val = tf.keras.backend.get_value(loss)
-                accuracy, recall = cbc.on_epoch_end(self.model, step)
-                print("Step:", step, "\t loss:", loss_val, "\t accuracy:", accuracy, "\t recall:", recall)
-                # save statistics
-                history["loss"].append(loss_val)
-                history["recall"].append(recall)
-                history["accuracy"].append(accuracy)
-
-                # update index
-                predictions = self.model.predict(all_x)
-                # if distance_metric == "cos":
-                #     # https://stackoverflow.com/a/34145444/9154188
-                #     predictions /= np.linalg.norm(predictions, 2)
-                self.index = BallTree(predictions, metric="euclidean")
-                # tensorboard.on_predict_batch_end(step)
-
-            # tensorboard.on_epoch_end()
             lrs.on_epoch_end(epoch)
-        # tensorboard.on_train_end()
-        return history
 
     def train(self, batch_size: int = 64, epochs: int = 100,
               distance_metric="cos", alpha=0.1):
 
         X_train, x_test, y_train, y_test = self.preprocess()
-        # # the distance metric selected according to https://stackoverflow.com/a/34145444/9154188
-        # self.index = BallTree(np.zeros((X_train.shape[0], self.output_size)), metric="euclidean")
 
         steps_per_epoch = int(X_train.shape[0] / batch_size)
         optimizer = optimizers.Adam(0.01)
 
-        test_cb = TestCallback(x_test.reshape((-1, self.input_size)), y_test,
-                               self.create_model(), input_size=self.input_size,
-                               threshold=alpha)
-        lrs = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=2, min_lr=0.00001)
-        tensorboard = callbacks.TensorBoard(log_dir='../outputs/tensor_board')
-        # self.model.run_eagerly = True
-        history = self.training_loop(X_train, epochs, steps_per_epoch,
-                                     self.data_generator(X_train, y_train, batch_size),
-                                     optimizer, test_cb, alpha=alpha,
-                                     distance_metric=distance_metric, lrs=lrs, tensorboard=tensorboard)
-        return history
+        test_cb = TestCallback(X_train, x_test, y_train, y_test,  threshold=alpha,
+                               input_size=self.input_size, model_name=self.name)
+        lrs = callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.1, patience=2, min_lr=0.00001)
+        tensorboard = callbacks.TensorBoard(log_dir="../outputs/tensor_board", histogram_freq=1)
+
+        self.training_loop(X_train, epochs, steps_per_epoch,
+                           self.data_generator(X_train, y_train, batch_size),
+                           optimizer, test_cb, alpha=alpha,
+                           distance_metric=distance_metric, lrs=lrs, tensorboard=tensorboard)
