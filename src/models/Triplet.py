@@ -98,12 +98,12 @@ class Triplet(Model):
 
         return tf.maximum(positive_dist - negative_dist + alpha, .0)
 
-    def on_batch_end(self, loss, cbc, step, all_x):
+    def on_batch_end(self, loss, cbc, epoch, all_x):
         # save model
         self.model.save("../outputs/{}.h".format(self.name))
         # update statistics
         loss_val = tf.keras.backend.get_value(loss)
-        cbc.on_epoch_end(self.model, step, loss=loss_val)
+        cbc.on_epoch_end(self.model, epoch, loss=loss_val)
         # update index
         predictions = self.model.predict(all_x)
         self.index = BallTree(predictions, metric="euclidean")
@@ -124,7 +124,7 @@ class Triplet(Model):
                 # update gradient
                 gradient = tape.gradient(loss, self.model.trainable_weights)
                 optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
-                self.on_batch_end(loss, cbc, step, all_x)
+                self.on_batch_end(loss, cbc, epoch, all_x)
 
             lrs.on_epoch_end(epoch)
 

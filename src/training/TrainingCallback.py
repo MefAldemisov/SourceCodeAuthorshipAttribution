@@ -1,3 +1,4 @@
+import io
 import datetime
 import numpy as np
 import tensorflow as tf
@@ -45,19 +46,34 @@ class TestCallback(callbacks.Callback):
         self.n = 0
         self.model_name = model_name
 
-    def apply_dimensionality_reduction(self, transformed_x, y):
+    @staticmethod
+    def _plot_to_image(figure):
+        # https://www.tensorflow.org/tensorboard/image_summaries
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png")
+        plt.close(figure)
+        buf.seek(0)
+        image = tf.image.decode_png(buf.getvalue(), channels=4)
+        return tf.expand_dims(image, 0)
+
+    def apply_dimensionality_reduction(self, transformed_x, y, epoch):
         vectors = TSNE(n_components=2)
         x_pca = vectors.fit_transform(transformed_x)
-        plt.figure(figsize=(10, 8))
-        plt.title("Step {} (epoch {})".format(self.n, self.n//125))
+        figure = plt.figure(figsize=(10, 8))
+        plt.title("Step {} (epoch {})".format(self.n, epoch))
         for developer in range(self.n_authors):
             indexes = np.where(y == developer)[0]
             plt.plot(x_pca[indexes, 0], x_pca[indexes, 1], "o", ms=5)
+        # save as file
         plt.savefig("../outputs/tsne_{}/tsne_{}.png".format(self.model_name, self.n))
-        plt.close('all')
-        self.n += 1
+        # log to tensorboard
+        image = self._plot_to_image(figure)
+        with self.test_summary_writer.as_default():
+            tf.summary.image("Distribution of authors", image, step=self.n)
 
-    def get_acc_and_recall(self, model, x, y, plot: bool = False):
+        plt.close("all")
+
+    def get_acc_and_recall(self, model, x, y, epoch, plot: bool = False):
         transformed_x = model.predict(x.reshape(-1, self.input_size))
 
         mse = lambda a, b: np.mean((a - b) ** 2)
@@ -73,17 +89,19 @@ class TestCallback(callbacks.Callback):
         cm = confusion_matrix(y_true, y_pred)
         recall = cm[1][1] / sum(y_true)
         if plot:
-            self.apply_dimensionality_reduction(transformed_x, y)
+            self.apply_dimensionality_reduction(transformed_x, y, epoch)
         return accuracy, recall
 
     def on_epoch_end(self, model, epoch, loss, logs=None):
-        test_accuracy, test_recall = self.get_acc_and_recall(model, self.X_test, self.y_test, plot=True)
+        test_accuracy, test_recall = self.get_acc_and_recall(model, self.X_test, self.y_test, epoch, plot=True)
         with self.test_summary_writer.as_default():
             tf.summary.scalar("test_accuracy", test_accuracy, step=self.n)
             tf.summary.scalar("test_recall", test_recall, step=self.n)
 
-        train_accuracy, train_recall = self.get_acc_and_recall(model, self.X_train, self.y_train, plot=False)
+        train_accuracy, train_recall = self.get_acc_and_recall(model, self.X_train, self.y_train, epoch, plot=False)
         with self.train_summary_writer.as_default():
             tf.summary.scalar("train_accuracy", train_accuracy, step=self.n)
             tf.summary.scalar("train_recall", train_recall, step=self.n)
             tf.summary.scalar("train_loss", loss, step=self.n)
+
+        self.n += 1
