@@ -5,14 +5,20 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 
 from sklearn.manifold import TSNE
-from tensorflow.keras import callbacks
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 
-class TestCallback(callbacks.Callback):
+class TestCallback:
 
-    def __init__(self, X_train, X_test, y_train, y_test, threshold: float = 0.1,
-                 input_size: int = 500, n_authors: int = 20, model_name: str = "conv2d"):
+    def __init__(self,
+                 X_train: np.ndarray,
+                 X_test: np.ndarray,
+                 y_train: np.ndarray,
+                 y_test: np.ndarray,
+                 threshold: float = 0.1,
+                 input_size: int = 500,
+                 n_authors: int = 20,
+                 model_name: str = "conv2d"):
         """
         Parameters:
         - `X_train`,` X_test` - np.arrays with data (tokens)
@@ -56,7 +62,10 @@ class TestCallback(callbacks.Callback):
         image = tf.image.decode_png(buf.getvalue(), channels=4)
         return tf.expand_dims(image, 0)
 
-    def apply_dimensionality_reduction(self, transformed_x, y, epoch):
+    def apply_dimensionality_reduction(self,
+                                       transformed_x: np.ndarray,
+                                       y: np.ndarray,
+                                       epoch: int):
         vectors = TSNE(n_components=2)
         x_pca = vectors.fit_transform(transformed_x)
         figure = plt.figure(figsize=(10, 8))
@@ -73,7 +82,13 @@ class TestCallback(callbacks.Callback):
 
         plt.close("all")
 
-    def get_acc_and_recall(self, model, x, y, epoch, plot: bool = False):
+    def get_acc_and_recall(self,
+                           model: tf.keras.Model,
+                           x: np.ndarray,
+                           y: np.ndarray,
+                           epoch: int,
+                           plot: bool = False):
+
         transformed_x = model.predict(x.reshape(-1, self.input_size))
 
         mse = lambda a, b: np.mean((a - b) ** 2)
@@ -92,7 +107,11 @@ class TestCallback(callbacks.Callback):
             self.apply_dimensionality_reduction(transformed_x, y, epoch)
         return accuracy, recall
 
-    def on_epoch_end(self, model, epoch, loss, logs=None):
+    def on_epoch_end(self,
+                     model: tf.keras.Model,
+                     epoch: int,
+                     loss: float):
+
         test_accuracy, test_recall = self.get_acc_and_recall(model, self.X_test, self.y_test, epoch, plot=True)
         with self.test_summary_writer.as_default():
             tf.summary.scalar("test_accuracy", test_accuracy, step=self.n)

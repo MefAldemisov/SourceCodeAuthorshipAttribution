@@ -1,18 +1,23 @@
 import numpy as np
 import pandas as pd
 
-from models.Triplet import Triplet
 from tensorflow import keras
+from models.Triplet import Triplet
 from tensorflow.keras import layers
-from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 
 class Conv2D(Triplet):
-    def __init__(self, triplet_type="default", output_size=50, img_x=120, img_y=200, make_initial_preprocess=True):
+    def __init__(self,
+                 output_size: int = 50,
+                 img_x: int = 120,
+                 img_y: int = 200,
+                 make_initial_preprocess: bool = True):
+
         self.img_x, self.img_y = img_x, img_y
         super().__init__("conv2d", input_size=img_x*img_y, output_size=output_size,
-                         make_initial_preprocess=make_initial_preprocess, triplet_type=triplet_type)
+                         make_initial_preprocess=make_initial_preprocess)
 
     def create_model(self):
         model_core = keras.Sequential()
@@ -34,18 +39,21 @@ class Conv2D(Triplet):
         return model_core
 
     @staticmethod
-    def _path_to_x(y_path):
+    def _path_to_x(y_path: str):
         x_path = y_path[:-4]  # json removed
         x_path += "txt"
         return x_path
 
-    def initial_preprocess(self, df_path, tmp_dataset_filename):
+    def initial_preprocess(self,
+                           df_path: str,
+                           tmp_dataset_filename: str):
+
         df = pd.read_csv(df_path)
         df = df.drop(columns=["round", "task", "solution", "file", "full_path", "Unnamed: 0.1", "Unnamed: 0", "lang"])
         df["n_lines"] = df.flines.apply(lambda x: str(x).count("\n"))
         df = df[(df.n_lines >= 30) & (df.n_lines < self.img_y)]  # there should be enough loc for 2D convolution
 
-        def max_cpl(file):
+        def max_cpl(file: str):
             """"
             Max chars per line
             """
@@ -65,7 +73,7 @@ class Conv2D(Triplet):
         le = LabelEncoder()
         df.username = le.fit_transform(df.username)
 
-        def to_vector(file):
+        def to_vector(file: str):
             lines = file.split('\n')
             res = np.zeros((self.img_y, self.img_x), dtype=int)
             for i in range(len(lines)):
@@ -88,7 +96,7 @@ class Conv2D(Triplet):
         dataset = df[["username"]]
         dataset.to_json(tmp_dataset_filename)
 
-    def secondary_preprocess(self, tmp_dataset_filename):
+    def secondary_preprocess(self, tmp_dataset_filename: str):
         df = pd.read_json(tmp_dataset_filename)
         y = np.array(df.username)
         # read X

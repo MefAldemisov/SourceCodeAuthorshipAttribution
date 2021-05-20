@@ -1,6 +1,6 @@
+import tqdm
 import numpy as np
 import tensorflow as tf
-import tqdm
 
 from models.Model import Model
 from training.TrainingCallback import TestCallback
@@ -10,17 +10,22 @@ from sklearn.neighbors import BallTree
 
 
 class Triplet(Model):
-    def __init__(self, name, triplet_type="default",
-                 input_size=500, output_size=50,
-                 make_initial_preprocess=True):
+    def __init__(self,
+                 name: str,
+                 input_size: int = 500,
+                 output_size: int = 50,
+                 make_initial_preprocess: bool = True):
+
         super().__init__(name, make_initial_preprocess)
-        self.triplet_type = triplet_type
         self.input_size = input_size
         self.output_size = output_size
         self.model = self.create_model()
         self.index = None  # to create the index, the X.shape[0] value should be available
 
-    def _batches_generator(self, X, y, batch_size=32):
+    def _batches_generator(self,
+                           X: np.ndarray,
+                           y: np.ndarray,
+                           batch_size: int = 32):
         """
         Array of batch_generator results
         Selects a few persons in the dataset, then select the appropriate amount
@@ -49,12 +54,16 @@ class Triplet(Model):
         labels = tf.convert_to_tensor(labels.reshape(-1, 1), np.int32)
         return batch, labels
 
-    def data_generator(self, X, y, batch_size=32):
+    def data_generator(self,
+                       X: np.ndarray,
+                       y: np.ndarray,
+                       batch_size: int = 32):
         while True:
             yield self._batches_generator(X, y, batch_size)
 
     @staticmethod
-    def get_distance(predictions, metric="euclidean"):
+    def get_distance(predictions: tf.Tensor,
+                     metric: str = "euclidean"):
         """
         :param predictions: tensor, float32 - values of which pairwise distances will be computed
         :param metric: str in ["euclidean", "cos"|]
@@ -77,7 +86,11 @@ class Triplet(Model):
 
         return None
 
-    def hard_triplet_loss(self, y_true, y_pred, alpha=0.2, distance_metric="euclidean"):
+    def hard_triplet_loss(self,
+                          y_true: tf.Tensor,
+                          y_pred: tf.Tensor,
+                          alpha: float = 0.2,
+                          distance_metric: str = "euclidean"):
         """
         :param y_true: labels of the source code authors
         :param y_pred: the distances, predicted for the triplet
@@ -98,23 +111,37 @@ class Triplet(Model):
 
         return tf.maximum(positive_dist - negative_dist + alpha, .0)
 
-    def on_batch_end(self, loss, cbc, epoch, all_x):
-        # save model
+    def on_batch_end(self, loss: tf.Tensor,
+                     cbc: TestCallback,
+                     epoch: int,
+                     all_x: np.ndarray):
+        """
+        :param loss: loss of the batch training
+        :param cbc: callback object
+        :param epoch: int, index of the epoch
+        :param all_x: x value to rebuild the tree
+        """
         self.model.save("../outputs/{}.h".format(self.name))
-        # update statistics
+        # get statistics
         loss_val = tf.keras.backend.get_value(loss)
         cbc.on_epoch_end(self.model, epoch, loss=loss_val)
-        # update index
+        # update tree
         predictions = self.model.predict(all_x)
         self.index = BallTree(predictions, metric="euclidean")
 
-    def training_loop(self, all_x, epochs, steps_per_epoch, data_generator, optimizer, cbc, lrs,
-                      tensorboard, alpha=0.2, distance_metric="euclidean"):
+    def training_loop(self, all_x: np.ndarray,
+                      epochs: int,
+                      steps_per_epoch: int,
+                      data_generator,
+                      optimizer: tf.keras.optimizers.Optimizer,
+                      cbc: TestCallback,
+                      lrs: tf.keras.callbacks.Callback,
+                      alpha: float = 0.2,
+                      distance_metric: str = "euclidean"):
         loss_function = self.hard_triplet_loss
 
-        tensorboard.set_model(self.model)
         for epoch in range(epochs):
-            for step in tqdm.tqdm(range(steps_per_epoch)):
+            for _ in tqdm.tqdm(range(steps_per_epoch)):
                 x, y = next(data_generator)
                 with tf.GradientTape() as tape:
                     predictions = self.model(x, training=True)
@@ -128,8 +155,11 @@ class Triplet(Model):
 
             lrs.on_epoch_end(epoch)
 
-    def train(self, batch_size: int = 64, epochs: int = 100,
-              distance_metric="cos", alpha=0.1):
+    def train(self,
+              batch_size: int = 64,
+              epochs: int = 100,
+              distance_metric: str = "euclidean",
+              alpha: float = 0.1):
 
         X_train, x_test, y_train, y_test = self.preprocess()
 
@@ -139,9 +169,11 @@ class Triplet(Model):
         test_cb = TestCallback(X_train, x_test, y_train, y_test,  threshold=alpha,
                                input_size=self.input_size, model_name=self.name)
         lrs = callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.1, patience=2, min_lr=0.00001)
+
         tensorboard = callbacks.TensorBoard(log_dir="../outputs/tensor_board", histogram_freq=1)
+        tensorboard.set_model(self.model)
 
         self.training_loop(X_train, epochs, steps_per_epoch,
                            self.data_generator(X_train, y_train, batch_size),
                            optimizer, test_cb, alpha=alpha,
-                           distance_metric=distance_metric, lrs=lrs, tensorboard=tensorboard)
+                           distance_metric=distance_metric, lrs=lrs)
