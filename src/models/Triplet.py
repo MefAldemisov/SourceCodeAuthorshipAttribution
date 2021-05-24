@@ -168,7 +168,7 @@ class Triplet(Model):
 
         test_cb = TestCallback(X_train, x_test, y_train, y_test,  threshold=alpha,
                                input_size=self.input_size, model_name=self.name)
-        lrs = callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.1, patience=2, min_lr=0.00001)
+        lrs = callbacks.ReduceLROnPlateau(monitor="loss", factor=0.1, patience=2, min_lr=0.00001)
 
         tensorboard = callbacks.TensorBoard(log_dir="../outputs/tensor_board", histogram_freq=1)
         tensorboard.set_model(self.model)

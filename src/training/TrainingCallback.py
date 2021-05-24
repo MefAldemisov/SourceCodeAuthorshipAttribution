@@ -65,7 +65,8 @@ class TestCallback:
     def apply_dimensionality_reduction(self,
                                        transformed_x: np.ndarray,
                                        y: np.ndarray,
-                                       epoch: int):
+                                       epoch: int,
+                                       is_test: bool):
         vectors = TSNE(n_components=2)
         x_pca = vectors.fit_transform(transformed_x)
         figure = plt.figure(figsize=(10, 8))
@@ -77,7 +78,8 @@ class TestCallback:
         plt.savefig("../outputs/tsne_{}/tsne_{}.png".format(self.model_name, self.n))
         # log to tensorboard
         image = self._plot_to_image(figure)
-        with self.test_summary_writer.as_default():
+        writer = self.test_summary_writer if is_test else self.train_summary_writer
+        with writer.as_default():
             tf.summary.image("Distribution of authors", image, step=self.n)
 
         plt.close("all")
@@ -87,7 +89,7 @@ class TestCallback:
                            x: np.ndarray,
                            y: np.ndarray,
                            epoch: int,
-                           plot: bool = False):
+                           is_test: bool):
 
         transformed_x = model.predict(x.reshape(-1, self.input_size))
 
@@ -103,8 +105,7 @@ class TestCallback:
         accuracy = accuracy_score(y_true, y_pred)
         cm = confusion_matrix(y_true, y_pred)
         recall = cm[1][1] / sum(y_true)
-        if plot:
-            self.apply_dimensionality_reduction(transformed_x, y, epoch)
+        self.apply_dimensionality_reduction(transformed_x, y, epoch, is_test)
         return accuracy, recall
 
     def on_epoch_end(self,
@@ -112,15 +113,16 @@ class TestCallback:
                      epoch: int,
                      loss: float):
 
-        test_accuracy, test_recall = self.get_acc_and_recall(model, self.X_test, self.y_test, epoch, plot=True)
+        test_accuracy, test_recall = self.get_acc_and_recall(model, self.X_test, self.y_test, epoch, True)
         with self.test_summary_writer.as_default():
             tf.summary.scalar("test_accuracy", test_accuracy, step=self.n)
             tf.summary.scalar("test_recall", test_recall, step=self.n)
 
-        train_accuracy, train_recall = self.get_acc_and_recall(model, self.X_train, self.y_train, epoch, plot=False)
+        train_accuracy, train_recall = self.get_acc_and_recall(model, self.X_train, self.y_train, epoch, False)
         with self.train_summary_writer.as_default():
             tf.summary.scalar("train_accuracy", train_accuracy, step=self.n)
             tf.summary.scalar("train_recall", train_recall, step=self.n)
             tf.summary.scalar("train_loss", loss, step=self.n)
 
+        print(loss, test_accuracy, test_recall, train_accuracy, train_recall)
         self.n += 1
