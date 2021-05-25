@@ -26,4 +26,5 @@ old_notebooks/*
 *.bz2
 *.zip
 /src/visualization/*
+!/src/visualization/Visualizer.py
 /outputs/tensor_board*

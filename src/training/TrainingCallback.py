@@ -50,6 +50,7 @@ class TestCallback:
         self.y_test = y_test[index]
         # counter initialization
         self.n = 0
+        print(model_name)
         self.model_name = model_name
 
     @staticmethod
