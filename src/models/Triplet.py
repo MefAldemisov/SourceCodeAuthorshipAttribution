@@ -35,7 +35,7 @@ class Triplet(Model):
         batch_size - size of the generated array
         """
         anchor_y = np.random.choice(y, 1)
-        positive_indexes = np.where(y == anchor_y)[0]
+        positive_indexes = np.where(y == anchor_y)[0][:batch_size // 2]  # at least 50% of batch - other authors
         # negative indexes generation
         k = batch_size - positive_indexes.shape[0]
 
@@ -109,7 +109,7 @@ class Triplet(Model):
         positive_dist = tf.reduce_mean(tf.boolean_mask(distances, equal))
         negative_dist = tf.reduce_mean(tf.boolean_mask(distances, n_equal))
 
-        return tf.maximum(positive_dist - negative_dist + alpha, .0)
+        return positive_dist - negative_dist + alpha
 
     def on_batch_end(self, loss: tf.Tensor,
                      cbc: TestCallback,
