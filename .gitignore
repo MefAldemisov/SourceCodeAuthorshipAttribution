@@ -25,6 +25,5 @@ old_notebooks/*
 /outputs/model_embedding.h/
 *.bz2
 *.zip
-/src/visualization/*
-!/src/visualization/Visualizer.py
+/src/visualization/plots.py
 /outputs/tensor_board*
