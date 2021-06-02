@@ -109,7 +109,7 @@ class Triplet(Model):
         positive_dist = tf.reduce_mean(tf.boolean_mask(distances, equal))
         negative_dist = tf.reduce_mean(tf.boolean_mask(distances, n_equal))
 
-        return positive_dist - negative_dist + alpha
+        return tf.multiply(tf.math.exp(positive_dist - negative_dist + alpha), positive_dist)  # don't to be zero
 
     def on_batch_end(self, loss: tf.Tensor,
                      cbc: TestCallback,
