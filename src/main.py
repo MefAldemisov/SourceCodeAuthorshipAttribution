@@ -4,6 +4,7 @@ from models.Linear import Linear
 from models.Conv2D import Conv2D
 from visualization.Visualizer import Visualizer
 from visualization.KeractVisualizer import KeractVisualizer
+from visualization.AlibiVisualizer import AlibiVisualizer
 # classification = Classification(make_initial_preprocess=False)
 # classification.train(2, 32)
 
@@ -18,6 +19,8 @@ from visualization.KeractVisualizer import KeractVisualizer
 # conv2d.train(batch_size=128, epochs=1)
 
 # Visualizer("conv2d").run()
-# Visualizer("embedding").run()
-KeractVisualizer("conv2d").run()
-KeractVisualizer("embedding").run()
+Visualizer("embedding").run()
+# AlibiVisualizer("conv2d").run()
+# AlibiVisualizer("embedding").run()
+# KeractVisualizer("conv2d").run()
+# KeractVisualizer("embedding").run()
