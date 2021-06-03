@@ -44,6 +44,10 @@ conv2d.train(batch_size=128, epochs=1)
 Visualizer("conv2d").run()
 Visualizer("embedding").run()
 ```
+Example of embedding-based visualization
+![img.png](img.png)
+Example of conv2d visualization
+![img_5.png](img_5.png)
 
 2.4 To show all the layers of the models:
 ```python
@@ -53,12 +57,18 @@ KeractVisualizer("embedding").run()
 
 3. Run `python3 src/main.py` and fix import errors, if there are
 
-## Class diagram (TODO)
-(simple description instead of it)
+## Class diagram 
 
+![img_1.png](img_1.png)
+![img_2.png](img_2.png)
 1. `Model` - root class (interface for all models)
 2. `Triplet(Model)` - triplet-loss specific methods (batch generation, fit process, full model creation e.t.c)
 3. `Embedding(Triplet)` - actual realization of the target architecture
+
+### More detailed visualization
+
+![img_3.png](img_3.png)
+![img_4.png](img_4.png)
 
 ## Visualization:
 
