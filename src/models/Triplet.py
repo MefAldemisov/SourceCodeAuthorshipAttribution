@@ -27,12 +27,16 @@ class Triplet(Model):
                            y: np.ndarray,
                            batch_size: int = 32):
         """
-        Array of batch_generator results
-        Selects a few persons in the dataset, then select the appropriate amount
-        Of samples: while amount of files don't exceed the batch size
-        - increase the amount of classes within a batch, the resulted number += batch_size//100
+        The first author in the batch is selected randomly, then all of his files are selected to fit no more
+        then half of the batch. All other elements are selected either randomly (if the index is empty), either
+        the closes negative (for the anchor) examples are chosen.
 
-        batch_size - size of the generated array
+        :param X, y - the overall dataset
+        :param batch_size, int - size of the generated array
+
+        :return two tensors:
+        1. float32 tensor with source codes
+        2. int32 tensor with the indexes of the authors
         """
         anchor_y = np.random.choice(y, 1)
         positive_indexes = np.where(y == anchor_y)[0][:batch_size // 2]  # at least 50% of batch - other authors
@@ -101,6 +105,9 @@ class Triplet(Model):
         triplet loss is defined according to the formula:
         `positive - negative + alpha`, where `positive` and `negative` are
         average distances between same/distinct-labeled predictions.
+
+        In out case, triplet loss is defined as `e^(positive - negative + alpha)*positive`
+        in order to make the function differentiable and non-zero valued (necessary for the visualization)
         """
         distances = self.get_distance(y_pred, metric=distance_metric)
         equal = tf.math.equal(tf.transpose(y_true), y_true)
