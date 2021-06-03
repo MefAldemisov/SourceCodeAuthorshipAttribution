@@ -4,8 +4,8 @@ from keract import get_activations, display_activations
 
 
 class KeractVisualizer(Visualizer):
-    def __init__(self, model_name: str):
-        super().__init__(model_name=model_name)
+    def __init__(self, model_name: str, snippet_index: int):
+        super().__init__(model_name=model_name, snippet_index=snippet_index)
 
     def run_conv2d(self):
         self.x_author = self.x_author.numpy().reshape((1, 200, 120))
