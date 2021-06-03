@@ -9,6 +9,8 @@ embd/*
 embd
 *.csv
 *.h5
+*.png
+!media/*.png
 .DS_Store
 .vscode/*
 .vscode

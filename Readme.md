@@ -45,9 +45,9 @@ Visualizer("conv2d").run()
 Visualizer("embedding").run()
 ```
 Example of embedding-based visualization
-![img.png](img.png)
+![img.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img.png?raw=true)
 Example of conv2d visualization
-![img_5.png](img_5.png)
+![img_5.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_5.png?raw=true)
 
 2.4 To show all the layers of the models:
 ```python
@@ -59,16 +59,16 @@ KeractVisualizer("embedding").run()
 
 ## Class diagram 
 
-![img_1.png](img_1.png)
-![img_2.png](img_2.png)
+![img_1.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_1.png?raw=trueg)
+![img_2.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_2.png?raw=true)
 1. `Model` - root class (interface for all models)
 2. `Triplet(Model)` - triplet-loss specific methods (batch generation, fit process, full model creation e.t.c)
 3. `Embedding(Triplet)` - actual realization of the target architecture
 
 ### More detailed visualization
 
-![img_3.png](img_3.png)
-![img_4.png](img_4.png)
+![img_3.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_3.png?raw=true)
+![img_4.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_4.png?raw=true)
 
 ## Visualization:
 
