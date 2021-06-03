@@ -87,8 +87,9 @@ class Conv2D(Triplet):
         X = df.flines.apply(to_vector).values
         X = np.array([np.array(x) for x in X])
         # scale
-        ss = StandardScaler()
-        X = ss.fit_transform(X.reshape((-1, self.img_y * self.img_x))).reshape((-1, self.img_y, self.img_x))
+        # ss = StandardScaler()
+        # X = ss.fit_transform(X.reshape((-1, self.img_y * self.img_x))).reshape((-1, self.img_y, self.img_x))
+        X = X.reshape((-1, self.img_y, self.img_x))
         # save X and y separately
         x_file = open(self._path_to_x(tmp_dataset_filename), "wb")
         np.save(x_file, X)

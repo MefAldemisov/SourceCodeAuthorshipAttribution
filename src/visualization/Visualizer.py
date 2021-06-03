@@ -59,6 +59,24 @@ class Visualizer(Triplet):
         y = np.array(dataset.username)
         return X, y
 
+    def show_html_conv2d(self, char_impact: np.ndarray):
+        color_map = cm.get_cmap("Reds")
+        char_impact /= char_impact.max()  # normalization
+        with open("../outputs/text_{}.html".format(self.model_name), "a") as file:
+            file.write("<div>\n")
+            for char_line, impact_line in zip(self.x_author, char_impact):
+                for char, impact in zip(char_line, impact_line):
+                    if int(char) == 0:
+                        continue
+                    local_impact = color_map(impact)  # to convert to the [0, 255] range
+                    local_impact = [l * 255 for l in local_impact]
+                    char = chr(int(char))
+                    file.write(
+                        "\t<span style='background-color: rgba({}, {}, {}, {})'>{}</span>\n".format(*local_impact,
+                                                                                                    char))
+                file.write("<br>")
+            file.write("<\div>")
+
     def run_conv2d(self):
         saliency = Gradcam(self.model, model_modifier=lambda m: m, clone=False)
 
@@ -74,6 +92,7 @@ class Visualizer(Triplet):
         plt.subplot(122)
         plt.title("GradCAM map")
         plt.imshow(heatmap)
+        self.show_html_conv2d(heatmap)
 
     def show_html_embd(self, token_impact: np.ndarray):
         sp = spm.SentencePieceProcessor(model_file='../inputs/embd/sentencepiece_bpe.model')
