@@ -92,7 +92,7 @@ class TestCallback:
                            epoch: int,
                            is_test: bool):
 
-        transformed_x = model.predict(x.reshape(-1, self.input_size))
+        transformed_x = model.predict(x)
 
         mse = lambda a, b: np.mean((a - b) ** 2)
         y_pred, y_true = [], []

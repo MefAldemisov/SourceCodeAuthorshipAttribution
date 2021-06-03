@@ -3,7 +3,7 @@ import pandas as pd
 
 from tensorflow import keras
 from models.Triplet import Triplet
-from tensorflow.keras import layers
+from tensorflow.keras import layers, regularizers
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 
@@ -20,8 +20,21 @@ class Conv2D(Triplet):
                          make_initial_preprocess=make_initial_preprocess)
 
     def create_model(self):
+        emb_height = 100
         model_core = keras.Sequential()
+        model_core.add(layers.Input((self.img_y, self.img_x)))
+        model_core.add(layers.Reshape((self.img_y * self.img_x, 1)))
+        model_core.add(layers.Embedding(756452 + 1, emb_height, mask_zero=True,
+                                        input_length=self.img_y * self.img_x))  # output shape: (-1, x*y, 100)
+
+        # model_core.add(layers.LayerNormalization(axis=2))
+        model_core.add(layers.Reshape((self.img_y * self.img_x, 100, 1)))
+
+        # pooling to reduce the dimensionality:
+        model_core.add(layers.AveragePooling2D(pool_size=(1, 100),
+                                               ata_format="channels_last"))  # output shape: -1, 1, x*y, 1
         model_core.add(layers.Reshape((self.img_y, self.img_x, 1)))
+
         model_core.add(layers.Conv2D(16, 16, activation="relu", padding="same"))
         model_core.add(layers.MaxPooling2D(pool_size=4))
         model_core.add(layers.Dropout(0.5))
@@ -40,7 +53,7 @@ class Conv2D(Triplet):
 
     @staticmethod
     def _path_to_x(y_path: str):
-        x_path = y_path[:-4]  # json removed
+        x_path = y_path[:-4]  # "json" removed
         x_path += "txt"
         return x_path
 
