@@ -45,9 +45,12 @@ Visualizer("conv2d").run()
 Visualizer("embedding").run()
 ```
 Example of embedding-based visualization
-![img.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img.png?raw=true)
+
+![Colormap of the source code, based on the tokens](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img.png?raw=true)
+
 Example of conv2d visualization
-![img_5.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_5.png?raw=true)
+
+![Colormap of the source code, based on char-by-char encoding](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_5.png?raw=true)
 
 2.4 To show all the layers of the models:
 ```python
@@ -59,22 +62,25 @@ KeractVisualizer("embedding").run()
 
 ## Class diagram 
 
-![img_1.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_1.png?raw=trueg)
-![img_2.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_2.png?raw=true)
+![Classes, inherited from `Model`](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_1.png?raw=trueg)
+![Classes, inherited from `Triplet`](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_2.png?raw=true)
 1. `Model` - root class (interface for all models)
 2. `Triplet(Model)` - triplet-loss specific methods (batch generation, fit process, full model creation e.t.c)
 3. `Embedding(Triplet)` - actual realization of the target architecture
 
 ### More detailed visualization
 
-![img_3.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_3.png?raw=true)
-![img_4.png](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_4.png?raw=true)
+![Methods of classes, which inherit from `Model`](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_3.png?raw=true)
+![Methods of classes, which inherit from `Triplet`](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_4.png?raw=true)
 
 ## Visualization:
+
+![Class diagram of the visualization block](https://github.com/MefAldemisov/SourceCodeAuthorshipAttribution/blob/main/media/img_6.png?raw=true)
 
 1. `Visualizer` - visualization, based on [`tf-keras-vis`](https://github.com/keisen/tf-keras-vis), which performs per-pixel modifications of the image, which potentially can lead to errors
 2. `KeractVisualizer` - visualization, based on [`keract`](https://github.com/philipperemy/keract) library. 
    
+
 **WARNING:** when using, substitute the `._layers` call with `.layers` call in `keract.py` file within a library in case of error (tensorflow version 2.5.0, [keract](https://github.com/philipperemy/keract) version 4.4.0) 
 
 ## Useful links
