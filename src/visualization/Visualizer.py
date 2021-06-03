@@ -55,7 +55,7 @@ class Visualizer(Triplet):
 
     def show_html_conv2d(self, char_impact: np.ndarray):
         color_map = cm.get_cmap("Reds")
-        char_impact /= char_impact.max()  # normalization
+        char_impact /= np.max(char_impact)  # normalization
         with open("../outputs/text_{}.html".format(self.model_name), "w") as file:
             file.write("<div><pre>\n")
             for char_line, impact_line in zip(self.x_author, char_impact):
@@ -66,22 +66,22 @@ class Visualizer(Triplet):
                     local_impact = [color * 255 for color in local_impact]
                     char = chr(int(char))
                     file.write(
-                        "<span style='background-color: rgba({}, {}, {}, {})'>{}</span>".format(*local_impact, char))
+                        "<span style='background-color: rgba({}, {}, {}, {})'>{} </span>".format(*local_impact, char))
                 file.write("<br>")
             file.write("</pre></div>")
 
     def show_html_embd(self, token_impact: np.ndarray):
         sp = spm.SentencePieceProcessor(model_file='../inputs/embd/sentencepiece_bpe.model')
         color_map = cm.get_cmap("Reds")
-        token_impact /= token_impact.max()  # normalization
+        token_impact /= np.max(token_impact)  # normalization
         with open("../outputs/text_{}.html".format(self.model_name), "w") as file:
-            file.write("<div>\n")
+            file.write("<div><pre>\n")
             for token, impact in zip(self.x_author, token_impact):
                 local_impact = color_map(impact)[0] * 255  # to convert to the [0, 255] range
                 word = sp.decode(int(token))
-                file.write("\t<span style='background-color: rgba({}, {}, {}, {})'>{}</span>\n".format(*local_impact,
+                file.write("<span style='background-color: rgba({}, {}, {}, {})'>{}</span>".format(*local_impact,
                                                                                                        word))
-            file.write("</div>")
+            file.write("</pre></div>")
 
     def get_heatmap(self,
                     target_shape: Tuple,
@@ -111,7 +111,7 @@ class Visualizer(Triplet):
         plt.title("Source code")
         plt.imshow(x_author)
         plt.subplot(axis[1])
-        plt.title("GradCAM map")
+        plt.title("Saliency map")
         plt.imshow(impact_map)
         plt.savefig("../outputs/vis_{}.png".format(self.model_name))
 
