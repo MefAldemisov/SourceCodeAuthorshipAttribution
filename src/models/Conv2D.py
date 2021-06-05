@@ -32,7 +32,7 @@ class Conv2D(Triplet):
 
         # pooling to reduce the dimensionality:
         model_core.add(layers.AveragePooling2D(pool_size=(1, 100),
-                                               ata_format="channels_last"))  # output shape: -1, 1, x*y, 1
+                                               data_format="channels_last"))  # output shape: -1, 1, x*y, 1
         model_core.add(layers.Reshape((self.img_y, self.img_x, 1)))
 
         model_core.add(layers.Conv2D(16, 16, activation="relu", padding="same"))
