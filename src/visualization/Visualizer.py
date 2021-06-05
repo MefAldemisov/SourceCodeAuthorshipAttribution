@@ -75,13 +75,13 @@ class Visualizer(Triplet):
         color_map = cm.get_cmap("Reds")
         token_impact /= np.max(token_impact)  # normalization
         with open("../outputs/text_{}.html".format(self.model_name), "w") as file:
-            file.write("<div><pre>\n")
+            file.write("<div>\n")
             for token, impact in zip(self.x_author, token_impact):
                 local_impact = color_map(impact)[0] * 255  # to convert to the [0, 255] range
                 word = sp.decode(int(token))
                 file.write("<span style='background-color: rgba({}, {}, {}, {})'>{}</span>".format(*local_impact,
                                                                                                        word))
-            file.write("</pre></div>")
+            file.write("</div>")
 
     def get_heatmap(self,
                     target_shape: Tuple,
