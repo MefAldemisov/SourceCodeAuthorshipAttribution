@@ -83,6 +83,14 @@ KeractVisualizer("embedding").run()
 
 **WARNING:** when using, substitute the `._layers` call with `.layers` call in `keract.py` file within a library in case of error (tensorflow version 2.5.0, [keract](https://github.com/philipperemy/keract) version 4.4.0) 
 
+## Useful commands
+
+```bash
+>> tensorboard --logdir=outputs/tensor_board
+>> source ./venv/bin/activate
+>> source /opt/anaconda/bin/activate roo
+```
+
 ## Useful links
 - [Tensorflow addons, hard triplet loss](https://github.com/tensorflow/addons/blob/30c8a7094f3bdcca5cc26fc88c1e33f022782266/tensorflow_addons/losses/triplet.py#L204)
 - [Good description of the visualization domain](https://medium.com/google-developer-experts/interpreting-deep-learning-models-for-computer-vision-f95683e23c1d)
