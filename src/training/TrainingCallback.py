@@ -17,7 +17,7 @@ class TestCallback:
                  y_test: np.ndarray,
                  threshold: float = 0.1,
                  input_size: int = 500,
-                 n_authors: int = 20,
+                 authors: int = list(range(20)),
                  model_name: str = "conv2d"):
         """
         Parameters:
@@ -26,7 +26,7 @@ class TestCallback:
 
         -  `threshold` - alpha parameter of the triplet loss, threshold for the classification's distance
         -  `input_size` - amount of tokens in one file
-        -  `n_authors` - int, prediction stage requires the all-with-all comparison (O(n^2)),
+        -  `authors` - int, prediction stage requires the all-with-all comparison (O(n^2)),
         that is why, it is reduced for plotting and evaluating
         """
         super().__init__()
@@ -39,13 +39,13 @@ class TestCallback:
         self.test_summary_writer = tf.summary.create_file_writer(test_log_dir)
         self.train_summary_writer = tf.summary.create_file_writer(train_log_dir)
         # x-y preprocessing
-        self.n_authors = n_authors
+        self.authors = authors
 
-        index = np.where(y_train < self.n_authors)[0]
+        index = np.where(np.isin(y_train, self.authors))[0]
         self.X_train = X_train[index]
         self.y_train = y_train[index]
 
-        index = np.where(y_test < self.n_authors)[0]
+        index = np.where(np.isin(y_test, self.authors))[0]
         self.X_test = X_test[index]
         self.y_test = y_test[index]
         # counter initialization
@@ -72,7 +72,7 @@ class TestCallback:
         x_pca = vectors.fit_transform(transformed_x)
         figure = plt.figure(figsize=(10, 8))
         plt.title("Step {} (epoch {})".format(self.n, epoch))
-        for developer in range(self.n_authors):
+        for developer in self.authors:
             indexes = np.where(y == developer)[0]
             plt.plot(x_pca[indexes, 0], x_pca[indexes, 1], "o", ms=5)
         # save as file

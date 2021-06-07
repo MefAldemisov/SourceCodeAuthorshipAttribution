@@ -88,7 +88,7 @@ KeractVisualizer("embedding").run()
 ```bash
 >> tensorboard --logdir=outputs/tensor_board
 >> source ./venv/bin/activate
->> source /opt/anaconda/bin/activate roo
+>> source /opt/anaconda/bin/activate root
 ```
 
 ## Useful links

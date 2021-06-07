@@ -142,7 +142,7 @@ class Triplet(Model):
                       data_generator,
                       optimizer: tf.keras.optimizers.Optimizer,
                       cbc: TestCallback,
-                      lrs: tf.keras.callbacks.Callback,
+                      #lrs: tf.keras.callbacks.Callback,
                       alpha: float = 0.2,
                       distance_metric: str = "euclidean"):
         loss_function = self.hard_triplet_loss
@@ -160,7 +160,7 @@ class Triplet(Model):
                 optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
                 self.on_batch_end(loss, cbc, epoch, all_x)
 
-            lrs.on_epoch_end(epoch)
+            #lrs.on_epoch_end(epoch)
 
     def train(self,
               batch_size: int = 64,
@@ -174,8 +174,8 @@ class Triplet(Model):
         optimizer = optimizers.Adam(0.01)
 
         test_cb = TestCallback(X_train, x_test, y_train, y_test,  threshold=alpha,
-                               input_size=self.input_size, model_name=self.name)
-        lrs = callbacks.ReduceLROnPlateau(monitor="loss", factor=0.1, patience=2, min_lr=0.00001)
+                               input_size=self.input_size, model_name=self.name, authors=[23, 34, 39, 40, 53, 60])
+        #lrs = callbacks.ReduceLROnPlateau(monitor="loss", factor=0.1, patience=2, min_lr=0.00001)
 
         tensorboard = callbacks.TensorBoard(log_dir="../outputs/tensor_board", histogram_freq=1)
         tensorboard.set_model(self.model)
@@ -183,4 +183,4 @@ class Triplet(Model):
         self.training_loop(X_train, epochs, steps_per_epoch,
                            self.data_generator(X_train, y_train, batch_size),
                            optimizer, test_cb, alpha=alpha,
-                           distance_metric=distance_metric, lrs=lrs)
+                           distance_metric=distance_metric)
