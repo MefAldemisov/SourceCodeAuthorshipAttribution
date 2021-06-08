@@ -50,9 +50,12 @@ class Triplet(Model):
             negative_indexes = np.array([neighbour_index for neighbour_index in query_res
                                          if y[neighbour_index] != anchor_y])[:k]
         else:  # the first batch generation
-            negative_indexes = np.random.choice(y[np.where(y != anchor_y)[0]], k)
+            negative_indexes = np.where(y != anchor_y)[0]
+            np.random.shuffle(negative_indexes)
+            negative_indexes = negative_indexes[:k]
 
         indexes = np.append(positive_indexes, negative_indexes)
+        assert indexes.shape[0] == np.unique(indexes).shape[0]
         batch, labels = X[indexes], y[indexes]
         batch = tf.convert_to_tensor(batch, np.float32)
         labels = tf.convert_to_tensor(labels.reshape(-1, 1), np.int32)
