@@ -11,7 +11,7 @@ from src.data_processing.commons import std_initial_preprocess
 class Embedding(Triplet):
 
     def __init__(self,
-                 input_size: int = 600,
+                 input_size: int = 100,
                  output_size: int = 50,
                  make_initial_preprocess: bool = True,
                  max_val: int = 99756 + 1):
@@ -41,7 +41,7 @@ class Embedding(Triplet):
         model_core.add(layers.Conv2D(conv_1_channels, (conv_1_size, emb_height), padding="same", activation=activation,
                                      kernel_regularizer=regularizers.L2(L2_lambda),
                                      input_shape=(1, self.input_size, emb_height), data_format="channels_last"))
-
+        #
         model_core.add(layers.Conv2D(conv_2_channels, (conv_2_size, emb_height), activation=activation, padding="same",
                                      kernel_regularizer=regularizers.L2(L2_lambda),
                                      input_shape=(1, self.input_size, emb_height), data_format="channels_last"))
@@ -51,9 +51,9 @@ class Embedding(Triplet):
 
         model_core.add(layers.Flatten())
 
-        model_core.add(layers.Dropout(0.5))
+        # model_core.add(layers.Dropout(0.5))
         model_core.add(layers.Dense(self.output_size))
-        model_core.add(layers.LayerNormalization())
+        # model_core.add(layers.LayerNormalization())
 
         return model_core
 
@@ -67,7 +67,7 @@ class Embedding(Triplet):
         new_y = []
         for old_x, old_y in zip(X, y):
             for el in old_x.reshape(-1, crop):
-                if np.count_nonzero(el) > threshold:
+                if np.count_nonzero(el) > threshold * crop // 100:
                     new_X.append(list(el))
                     new_y.append(old_y)
 
@@ -85,6 +85,6 @@ class Embedding(Triplet):
         X = np.array(list(X)).reshape((-1, self.input_size))
 
         y = np.array(dataset.username)
-        # X, y = crop_to(X, y)
+        X, y = self.crop_to(X, y, 100)
         X_train, X_test, y_train, y_test = train_test_split(X, y)
         return X_train, X_test, y_train, y_test

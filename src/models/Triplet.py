@@ -119,7 +119,8 @@ class Triplet(Model):
         positive_dist = tf.reduce_mean(tf.boolean_mask(distances, equal))
         negative_dist = tf.reduce_mean(tf.boolean_mask(distances, n_equal))
 
-        return tf.multiply(tf.math.exp(positive_dist - negative_dist + alpha), positive_dist)  # don't to be zero
+        return tf.multiply(tf.maximum(tf.math.exp(positive_dist - negative_dist + alpha),
+                                      10**(-9)), positive_dist) # don't to be zero
 
     def on_batch_end(self, loss: tf.Tensor,
                      cbc: TestCallback,
@@ -136,8 +137,8 @@ class Triplet(Model):
         loss_val = tf.keras.backend.get_value(loss)
         cbc.on_epoch_end(self.model, epoch, loss=loss_val)
         # update tree
-        predictions = self.model.predict(all_x)
-        self.index = BallTree(predictions, metric="euclidean")
+        # predictions = self.model.predict(all_x)
+        # self.index = BallTree(predictions, metric="euclidean")
 
     def training_loop(self, all_x: np.ndarray,
                       epochs: int,
@@ -163,7 +164,7 @@ class Triplet(Model):
                 optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
                 self.on_batch_end(loss, cbc, epoch, all_x)
 
-            #lrs.on_epoch_end(epoch)
+            # lrs.on_epoch_end(epoch)
 
     def train(self,
               batch_size: int = 64,
@@ -174,7 +175,7 @@ class Triplet(Model):
         X_train, x_test, y_train, y_test = self.preprocess()
 
         steps_per_epoch = int(X_train.shape[0] / batch_size)
-        optimizer = optimizers.Adam(0.01)
+        optimizer = optimizers.Adam(0.00001)
 
         test_cb = TestCallback(X_train, x_test, y_train, y_test,  threshold=alpha,
                                input_size=self.input_size, model_name=self.name, authors=[23, 34, 39, 40, 53, 60])
