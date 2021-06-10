@@ -3,7 +3,7 @@ import pandas as pd
 
 from tensorflow import keras
 from models.Triplet import Triplet
-from tensorflow.keras import layers, regularizers
+from tensorflow.keras import layers, regularizers, models
 from sklearn.model_selection import train_test_split
 from src.data_processing.commons import std_initial_preprocess
 
@@ -24,38 +24,47 @@ class Embedding(Triplet):
     def create_model(self,
                      activation: str = "linear",
                      L2_lambda: float = 0.02,
-                     conv_1_size: int = 4,
-                     conv_2_size: int = 4,
+                     conv_sizes: int = [4, 8, 16],
                      emb_height: int = 100):
 
-        conv_1_channels = 1
-        conv_2_channels = 1
-        model_core = keras.Sequential()
-        model_core.add(layers.Embedding(self.max_val, emb_height,
-                                        mask_zero=True, input_length=self.input_size))
-        model_core.add(layers.LayerNormalization(axis=2))
+        conv_channels = 1
+        input_layer = layers.Input(shape=(self.input_size, 1))
 
-        model_core.add(layers.Reshape((self.input_size, emb_height, 1)))
-        model_core.add(layers.Dropout(0.5))
+        embeddings = layers.Embedding(self.max_val, emb_height,
+                                      mask_zero=True, input_length=self.input_size)(input_layer)
 
-        model_core.add(layers.Conv2D(conv_1_channels, (conv_1_size, emb_height), padding="same", activation=activation,
-                                     kernel_regularizer=regularizers.L2(L2_lambda),
-                                     input_shape=(1, self.input_size, emb_height), data_format="channels_last"))
-        #
-        model_core.add(layers.Conv2D(conv_2_channels, (conv_2_size, emb_height), activation=activation, padding="same",
-                                     kernel_regularizer=regularizers.L2(L2_lambda),
-                                     input_shape=(1, self.input_size, emb_height), data_format="channels_last"))
+        reshape1 = layers.Reshape((self.input_size, emb_height, 1))(embeddings)
 
-        model_core.add(layers.MaxPooling2D(pool_size=(self.input_size, 1), data_format="channels_last"))
-        model_core.add(layers.Reshape((-1, emb_height*conv_2_channels)))
+        # parallel piece
+        convolutions = [layers.Conv2D(conv_channels, (conv_size, emb_height),
+                                      padding="same", activation=activation,
+                                      #kernel_regularizer=regularizers.L2(L2_lambda),
+                                      input_shape=(1, self.input_size, emb_height),
+                                      data_format="channels_last")(reshape1) for conv_size in conv_sizes]
 
-        model_core.add(layers.Flatten())
 
-        # model_core.add(layers.Dropout(0.5))
-        model_core.add(layers.Dense(self.output_size))
-        # model_core.add(layers.LayerNormalization())
+        pools = [layers.MaxPooling2D(pool_size=(self.input_size, 1),
+                                     data_format="channels_last")(conv) for conv in convolutions]
 
-        return model_core
+        connect = layers.concatenate(pools, axis=3)
+
+        big_convolution = layers.Conv2D(4, (4, emb_height),
+                                        padding="same", activation=activation,
+                                        #kernel_regularizer=regularizers.L2(L2_lambda),
+                                        input_shape=(1, self.input_size, emb_height),
+                                        data_format="channels_last")(connect) # 100, 100, 4
+
+
+        reshape2 = layers.Reshape((-1, emb_height * 4))(big_convolution)
+        flatten = layers.Flatten()(reshape2)
+        dense = layers.Dense(self.output_size)(flatten)
+        # norm2 = layers.LayerNormalization()(dense)
+        result =  models.Model(input_layer, dense)
+
+        print(result.summary())
+        keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)
+
+        return result
 
     @staticmethod
     def crop_to(X: np.ndarray,
