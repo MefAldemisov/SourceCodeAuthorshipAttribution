@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 import pandas as pd
 
@@ -24,7 +26,7 @@ class Embedding(Triplet):
     def create_model(self,
                      activation: str = "linear",
                      L2_lambda: float = 0.02,
-                     conv_sizes: int = [4, 8, 16],
+                     conv_sizes: List[int] = [2, 4, 16],
                      emb_height: int = 100):
 
         conv_channels = 1
@@ -38,7 +40,7 @@ class Embedding(Triplet):
         # parallel piece
         convolutions = [layers.Conv2D(conv_channels, (conv_size, emb_height),
                                       padding="same", activation=activation,
-                                      #kernel_regularizer=regularizers.L2(L2_lambda),
+                                      kernel_regularizer=regularizers.L2(L2_lambda),
                                       input_shape=(1, self.input_size, emb_height),
                                       data_format="channels_last")(reshape1) for conv_size in conv_sizes]
 
@@ -47,18 +49,21 @@ class Embedding(Triplet):
                                      data_format="channels_last")(conv) for conv in convolutions]
 
         connect = layers.concatenate(pools, axis=3)
+        norm0 = layers.LayerNormalization(axis=-1)(connect)
+        drop1 = layers.Dropout(0.5)(norm0)
 
-        big_convolution = layers.Conv2D(4, (4, emb_height),
+        big_conv_channels = 2
+        big_convolution = layers.Conv2D(big_conv_channels, (4, emb_height),
                                         padding="same", activation=activation,
-                                        #kernel_regularizer=regularizers.L2(L2_lambda),
+                                        kernel_regularizer=regularizers.L2(L2_lambda),
                                         input_shape=(1, self.input_size, emb_height),
-                                        data_format="channels_last")(connect) # 100, 100, 4
+                                        data_format="channels_last")(drop1) # 100, 100, 4
 
-
-        reshape2 = layers.Reshape((-1, emb_height * 4))(big_convolution)
+        reshape2 = layers.Reshape((-1, emb_height * big_conv_channels))(big_convolution)
         flatten = layers.Flatten()(reshape2)
-        dense = layers.Dense(self.output_size)(flatten)
-        # norm2 = layers.LayerNormalization()(dense)
+        norm1 = layers.LayerNormalization(axis=-1)(flatten)
+        drop2 = layers.Dropout(0.5)(norm1)
+        dense = layers.Dense(self.output_size)(drop2)
         result =  models.Model(input_layer, dense)
 
         print(result.summary())
