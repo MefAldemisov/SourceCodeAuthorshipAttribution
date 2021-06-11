@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
+from typing import List
 from sklearn.manifold import TSNE
 from sklearn.metrics import accuracy_score, confusion_matrix
 
@@ -17,7 +18,7 @@ class TestCallback:
                  y_test: np.ndarray,
                  threshold: float = 0.1,
                  input_size: int = 500,
-                 authors: int = list(range(20)),
+                 authors: List = list(range(20)),
                  model_name: str = "conv2d"):
         """
         Parameters:

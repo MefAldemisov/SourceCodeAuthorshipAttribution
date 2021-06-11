@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import tqdm
 import numpy as np
 import tensorflow as tf
@@ -22,6 +24,29 @@ class Triplet(Model):
         self.model = self.create_model()
         self.index = None  # to create the index, the X.shape[0] value should be available
 
+    def _positive_negative_index_generator(self,
+                                           y_anchor: np.ndarray,
+                                           X: np.ndarray,
+                                           y: np.ndarray,
+                                           n_positive: int,
+                                           batch_size: int) -> Tuple:
+
+        positive_indexes = np.where(y == y_anchor)[0][:n_positive]
+        k = batch_size - positive_indexes.shape[0]
+
+        if self.index is not None:
+            anchor_index = np.random.choice(positive_indexes, 1)
+            query = self.model.predict(X[anchor_index])
+            query_res = self.index.query(query, batch_size, return_distance=False)[0]
+            negative_indexes = np.array([neighbour_index for neighbour_index in query_res
+                                         if y[neighbour_index] != y_anchor])[:k]
+        else:  # the first batch generation
+            negative_indexes = np.where(y != y_anchor)[0]
+            np.random.shuffle(negative_indexes)
+            negative_indexes = negative_indexes[:k]
+
+        return positive_indexes, negative_indexes
+
     def _batches_generator(self,
                            X: np.ndarray,
                            y: np.ndarray,
@@ -39,20 +64,9 @@ class Triplet(Model):
         2. int32 tensor with the indexes of the authors
         """
         anchor_y = np.random.choice(y, 1)
-        positive_indexes = np.where(y == anchor_y)[0][:batch_size // 2]  # at least 50% of batch - other authors
-        # negative indexes generation
-        k = batch_size - positive_indexes.shape[0]
-
-        if self.index is not None:
-            anchor_index = np.random.choice(positive_indexes, 1)
-            query = self.model.predict(X[anchor_index])
-            query_res = self.index.query(query, batch_size, return_distance=False)[0]
-            negative_indexes = np.array([neighbour_index for neighbour_index in query_res
-                                         if y[neighbour_index] != anchor_y])[:k]
-        else:  # the first batch generation
-            negative_indexes = np.where(y != anchor_y)[0]
-            np.random.shuffle(negative_indexes)
-            negative_indexes = negative_indexes[:k]
+        positive_indexes, negative_indexes = self._positive_negative_index_generator(anchor_y, X, y,
+                                                                                     batch_size=batch_size,
+                                                                                     n_positive=int(batch_size * 0.8))
 
         indexes = np.append(positive_indexes, negative_indexes)
         assert indexes.shape[0] == np.unique(indexes).shape[0]
@@ -61,12 +75,33 @@ class Triplet(Model):
         labels = tf.convert_to_tensor(labels.reshape(-1, 1), np.int32)
         return batch, labels
 
+    def _triplet_batch_generator(self,
+                           X: np.ndarray,
+                           y: np.ndarray,
+                           batch_size: int = 32):
+
+        anchor_y = np.random.choice(y, 1)
+        positive_indexes, negative_indexes = self._positive_negative_index_generator(anchor_y, X, y,
+                                                                                     batch_size=batch_size,
+                                                                                     n_positive=batch_size // 2)
+        positive_indexes_indexes = np.random.choice(positive_indexes, batch_size)
+        negative_indexes_indexes = np.random.choice(negative_indexes, batch_size)
+
+        X = X.reshape((-1, self.input_size, 1))
+        positive = X[positive_indexes_indexes]
+        negative = X[negative_indexes_indexes]
+
+        anchor = np.array([X[anchor_y] for _ in range(batch_size)]).reshape((batch_size, self.input_size, 1))
+        return tf.convert_to_tensor(anchor), \
+               tf.convert_to_tensor(positive), \
+               tf.convert_to_tensor(negative)
+
     def data_generator(self,
                        X: np.ndarray,
                        y: np.ndarray,
                        batch_size: int = 32):
         while True:
-            yield self._batches_generator(X, y, batch_size)
+            yield self._triplet_batch_generator(X, y, batch_size)
 
     @staticmethod
     def get_distance(predictions: tf.Tensor,
@@ -122,6 +157,21 @@ class Triplet(Model):
         return tf.multiply(tf.maximum(tf.math.exp(positive_dist - negative_dist + alpha),
                                       10**(-9)), positive_dist) # don't to be zero
 
+    def triplet_loss(self, anchor, positive, negative,
+                     alpha: float = 0.2,
+                     distance_metric: str = "euclidean"):
+        # distance is euclidean
+        norm = lambda x: tf.reduce_sum(tf.math.square(x), axis=1)
+        if distance_metric == "euclidean":
+            dist = lambda x, y: norm(x - y)
+        elif distance_metric == "cos":
+            dist = lambda x, y: tf.matmul(x / norm(x), y / norm(y))
+
+        positive_distance = dist(anchor, positive)
+        negative_distance = dist(anchor, negative)
+        triplet = positive_distance - negative_distance + alpha
+        return tf.reshape(triplet, (-1, 1))
+
     def on_batch_end(self, loss: tf.Tensor,
                      cbc: TestCallback,
                      epoch: int,
@@ -146,25 +196,24 @@ class Triplet(Model):
                       data_generator,
                       optimizer: tf.keras.optimizers.Optimizer,
                       cbc: TestCallback,
-                      #lrs: tf.keras.callbacks.Callback,
                       alpha: float = 0.2,
                       distance_metric: str = "euclidean"):
-        loss_function = self.hard_triplet_loss
+        loss_function = self.triplet_loss
 
         for epoch in range(epochs):
             for _ in tqdm.tqdm(range(steps_per_epoch)):
-                x, y = next(data_generator)
+                triplets = list(next(data_generator))
                 with tf.GradientTape() as tape:
-                    predictions = self.model(x, training=True)
-                    loss = loss_function(y, predictions, alpha=alpha,
-                                         distance_metric=distance_metric)
+                    embeddings = map(lambda x: self.model(x, training=True), triplets)
+                    loss = loss_function(*embeddings, alpha=alpha, distance_metric=distance_metric)
+                    # update gradient
+                    gradient = tape.gradient(loss, self.model.trainable_weights)
+                    loss = tf.reduce_mean(loss, axis=0)[0]
+                    optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
 
-                # update gradient
-                gradient = tape.gradient(loss, self.model.trainable_weights)
-                optimizer.apply_gradients(zip(gradient, self.model.trainable_weights))
+                assert np.isnan(self.model(triplets[-1]).numpy()).sum() == 0, "`nan` in the model's predictions"
                 self.on_batch_end(loss, cbc, epoch, all_x)
-
-            # lrs.on_epoch_end(epoch)
+            optimizer.lr = optimizer.lr * 0.9
 
     def train(self,
               batch_size: int = 64,
@@ -175,11 +224,10 @@ class Triplet(Model):
         X_train, x_test, y_train, y_test = self.preprocess()
 
         steps_per_epoch = int(X_train.shape[0] / batch_size)
-        optimizer = optimizers.Adam(0.00001)
+        optimizer = optimizers.Adam(0.0001)
 
         test_cb = TestCallback(X_train, x_test, y_train, y_test,  threshold=alpha,
                                input_size=self.input_size, model_name=self.name, authors=[23, 34, 39, 40, 53, 60])
-        #lrs = callbacks.ReduceLROnPlateau(monitor="loss", factor=0.1, patience=2, min_lr=0.00001)
 
         tensorboard = callbacks.TensorBoard(log_dir="../outputs/tensor_board", histogram_freq=1)
         tensorboard.set_model(self.model)
