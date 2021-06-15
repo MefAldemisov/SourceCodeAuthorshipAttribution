@@ -13,8 +13,8 @@ class SingleTriplet(BaseTriplet):
                         y: np.ndarray,
                         batch_size: int = 32):
 
-        anchor_y = np.random.choice(y, 1)
-        positive_indexes, negative_indexes = self._positive_negative_index_generator(anchor_y, X, y,
+        anchor_index = np.random.choice(y.shape[0], 1)
+        positive_indexes, negative_indexes = self._positive_negative_index_generator(anchor_index, X, y,
                                                                                      batch_size=batch_size,
                                                                                      n_positive=batch_size // 2)
 
@@ -25,7 +25,7 @@ class SingleTriplet(BaseTriplet):
 
         positive, negative = map(lambda x: X[x], reduced_indexes)
 
-        anchor = np.array([X[anchor_y] for _ in range(batch_size)]).reshape((batch_size, self.Model.input_size, 1))
+        anchor = np.array([X[anchor_index] for _ in range(batch_size)]).reshape((batch_size, self.Model.input_size, 1))
 
         return map(tf.convert_to_tensor, [anchor, positive, negative])
 

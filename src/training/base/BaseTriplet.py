@@ -17,17 +17,16 @@ class BaseTriplet:
         self.Model = model
 
     def _positive_negative_index_generator(self,
-                                           y_anchor: np.ndarray,
+                                           anchor_index: int,
                                            X: np.ndarray,
                                            y: np.ndarray,
                                            n_positive: int,
                                            batch_size: int) -> Tuple[np.ndarray, np.ndarray]:
-
+        y_anchor = y[anchor_index]
         positive_indexes = np.where(y == y_anchor)[0][:n_positive]
         k = batch_size - positive_indexes.shape[0]
 
         if self.index is not None:
-            anchor_index = np.random.choice(positive_indexes, 1)
             query = self.Model.model.predict(X[anchor_index])
             query_res = self.index.query(query, batch_size, return_distance=False)[0]
             negative_indexes = np.array([neighbour_index for neighbour_index in query_res

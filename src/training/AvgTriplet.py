@@ -25,8 +25,8 @@ class AverageTriplet(BaseTriplet):
         1. float32 tensor with source codes
         2. int32 tensor with the indexes of the authors
         """
-        anchor_y = np.random.choice(y, 1)
-        positive_indexes, negative_indexes = self._positive_negative_index_generator(anchor_y, X, y,
+        anchor_index = np.random.choice(y.shape[0], 1)
+        positive_indexes, negative_indexes = self._positive_negative_index_generator(anchor_index, X, y,
                                                                                      batch_size=batch_size,
                                                                                      n_positive=int(batch_size * 0.8))
 
