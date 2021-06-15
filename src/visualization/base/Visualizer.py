@@ -26,7 +26,7 @@ class Visualizer(Triplet):
         self.snippet_index = snippet_index
         self.model = tf.keras.models.load_model('../outputs/{}.h'.format(model_name))
         all_x, all_y = self.read_conv2d_dataset() if model_name == "conv2d" else self.read_embedding_dataset()
-        self.x_batch, self.y_batch = self._batches_generator(all_x, all_y, 128)
+        self.x_batch, self.y_batch = self._batches_generator(all_x, all_y, 100)
         self.x_author = self.x_batch[self.snippet_index]
 
     @staticmethod
@@ -129,6 +129,7 @@ class Visualizer(Triplet):
         saliency = Saliency(self.model, model_modifier=model_modifier, clone=False)
         saliency_map = saliency(self.loss, x_batch)
         heatmap = saliency_map
+        assert heatmap.max() != 0.0, "the loss value is too small"
         return heatmap
 
     def plot_image(self, x_author: np.ndarray, impact_map: np.ndarray, axis: List[int]):

@@ -42,13 +42,14 @@ class TestCallback:
         # x-y preprocessing
         self.authors = authors
 
-        index = np.where(np.isin(y_train, self.authors))[0]
-        self.X_train = X_train[index]
-        self.y_train = y_train[index]
+        def select_authors(initial_x, initial_y):
+            index = np.where(np.isin(initial_y, self.authors))[0]
+            new_x, new_y = map(lambda a: a[index], [initial_x, initial_y])
+            return new_x, new_y
 
-        index = np.where(np.isin(y_test, self.authors))[0]
-        self.X_test = X_test[index]
-        self.y_test = y_test[index]
+        self.X_train, self.y_train = select_authors(X_train, y_train)
+        self.X_test, self.y_test = select_authors(X_test, y_test)
+
         # counter initialization
         self.n = 0
         print(model_name)
