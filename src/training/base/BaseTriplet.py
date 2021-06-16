@@ -1,4 +1,4 @@
-from src.training.TrainingCallback import TestCallback  # TODO: rename
+from src.training.TrainingCallback import TrainingCallback
 from src.models.base.Model import Model
 from src.models.data_processing.base.DataLoading import DataLoader
 import numpy as np
@@ -55,7 +55,7 @@ class BaseTriplet:
         raise NotImplementedError
 
     def on_batch_end(self, loss: tf.Tensor,
-                     cbc: TestCallback,
+                     cbc: TrainingCallback,
                      epoch: int,
                      all_x: np.ndarray):
         """
@@ -80,7 +80,7 @@ class BaseTriplet:
                       steps_per_epoch: int,
                       data_generator: Iterable,
                       optimizer: tf.keras.optimizers.Optimizer,
-                      cbc: TestCallback,
+                      cbc: TrainingCallback,
                       alpha: float = 0.2,
                       distance_metric: str = "euclidean"):
         # loss_function = self.triplet_loss
@@ -110,9 +110,9 @@ class BaseTriplet:
         steps_per_epoch = int(X_train.shape[0] / batch_size)
         optimizer = optimizers.Adam(0.0001)
 
-        test_cb = TestCallback(X_train, x_test, y_train, y_test,  threshold=alpha,
-                               input_size=self.Model.input_size,
-                               model_name=self.Model.name, authors=[23, 34, 39, 40, 53, 60])
+        test_cb = TrainingCallback(X_train, x_test, y_train, y_test, threshold=alpha,
+                                   input_size=self.Model.input_size,
+                                   model_name=self.Model.name, authors=[23, 34, 39, 40, 53, 60])
 
         tensorboard = callbacks.TensorBoard(log_dir="../outputs/tensor_board", histogram_freq=1)
         tensorboard.set_model(self.Model.model)

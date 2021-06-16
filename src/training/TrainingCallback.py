@@ -9,7 +9,7 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 
-class TestCallback:
+class TrainingCallback:
 
     def __init__(self,
                  X_train: np.ndarray,
