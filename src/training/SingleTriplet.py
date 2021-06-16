@@ -25,7 +25,9 @@ class SingleTriplet(BaseTriplet):
 
         positive, negative = map(lambda x: X[x], reduced_indexes)
 
-        anchor = np.array([X[anchor_index] for _ in range(batch_size)]).reshape((batch_size, self.Model.input_size, 1))
+        anchor = np.array([X[anchor_index] for _ in range(batch_size)]).reshape((batch_size,
+                                                                                 self.Model.input_size,
+                                                                                 1))
 
         return map(tf.convert_to_tensor, [anchor, positive, negative])
 

@@ -4,12 +4,13 @@ from src.models.data_processing.TokenFeatures import TokenFeatures
 from tensorflow.keras import layers, regularizers, models
 from tensorflow import keras
 
+
 class Embedding(TokenFeatures, Model):
 
     def __init__(self,
                  input_size: int = 100,
                  output_size: int = 50,
-                 make_initial_preprocess: bool = True,
+                 make_initial_preprocess: bool = False,
                  max_val: int = 99756 + 1):
 
         self.max_val = max_val
@@ -34,7 +35,6 @@ class Embedding(TokenFeatures, Model):
                                       input_shape=(1, self.input_size, emb_height),
                                       data_format="channels_last")(reshape1) for conv_size in conv_sizes]
 
-
         pools = [layers.MaxPooling2D(pool_size=(self.input_size, 1),
                                      data_format="channels_last")(conv) for conv in convolutions]
 
@@ -47,7 +47,7 @@ class Embedding(TokenFeatures, Model):
                                         padding="same", activation=activation,
                                         kernel_regularizer=regularizers.L2(L2_lambda),
                                         input_shape=(1, self.input_size, emb_height),
-                                        data_format="channels_last")(drop1) # 100, 100, 4
+                                        data_format="channels_last")(drop1)  # 100, 100, 4
 
         reshape2 = layers.Reshape((-1, emb_height * big_conv_channels))(big_convolution)
         flatten = layers.Flatten()(reshape2)
@@ -71,7 +71,7 @@ class Embedding(TokenFeatures, Model):
         reshape1 = layers.Reshape((self.input_size, emb_height, 1))(embeddings)
 
         dense = self.create_after_emb(reshape1, conv_channels, emb_height, activation, L2_lambda, conv_sizes)
-        result =  models.Model(input_layer, dense)
+        result = models.Model(input_layer, dense)
 
         print(result.summary())
         keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)

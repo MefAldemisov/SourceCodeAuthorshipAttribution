@@ -9,7 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 class DataLoader:
     def __init__(self, name: str,
                  crop: int = 100,
-                 make_initial_preprocess: bool = True):
+                 make_initial_preprocess: bool = False):
         """
         Interface for all models to be trained
 
