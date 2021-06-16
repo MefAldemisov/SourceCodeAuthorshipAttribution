@@ -14,7 +14,7 @@ class TokenFeatures(DataLoader):
                  crop=None,
                  make_initial_preprocess: bool = True):
         self.input_size = input_size
-        crop = input_size if crop is None else input_size
+        crop = input_size if crop is None else crop
         super().__init__(crop=crop, name=name, make_initial_preprocess=make_initial_preprocess)
 
     def initial_preprocess(self, df_path, tmp_dataset_filename):
