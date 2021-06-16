@@ -73,7 +73,7 @@ class CharFeatures(DataLoader):
         # chunking
         X, y = self._crop_to(X, y,
                              rs1=(-1, self.crop, self.img_x),
-                             rs2=(-1, self.crop, self.img_x))
+                             rs2=(-1, self.crop * self.img_x, 1))
 
         # train-test split
         X_train, X_test, y_train, y_test = train_test_split(X, y)
