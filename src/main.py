@@ -1,16 +1,15 @@
+from training.SingleTriplet import SingleTriplet
+from training.AvgTriplet import AverageTriplet
 from models.Embedding import Embedding
 from models.Conv2D import Conv2D
-from visualization.Visualizer import Visualizer
-from visualization.KeractVisualizer import KeractVisualizer
+from visualization.VisualizerTokenFeatures import VisualizerTokenFeatures
+from visualization.VisualizerCharFeatures import VisualizerCharFeatures
 
-# embedding = Embedding(make_initial_preprocess=False)
-# embedding.train(batch_size=128, epochs=1)
+#
+# model = Embedding(input_size=100, output_size=50, make_initial_preprocess=False)
+# SingleTriplet(model=model).train(batch_size=16, epochs=1)
+# VisualizerTokenFeatures().run()
 
-# conv2d = Conv2D(make_initial_preprocess=False)
-# conv2d.train(batch_size=128, epochs=1)
-
-Visualizer("conv2d").run()
-Visualizer("embedding").run()
-
-# KeractVisualizer("conv2d").run()
-# KeractVisualizer("embedding").run()
+# model = Conv2D(crop=20)
+# SingleTriplet(model=model).train(batch_size=16, epochs=1)
+VisualizerCharFeatures().run()

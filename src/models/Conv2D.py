@@ -22,7 +22,7 @@ class Conv2D(CharFeatures, Model):
         self.model = self.create_model()
 
     def create_after_emb(self, reshape1,
-                         conv_channels=2,
+                         conv_channels=1,
                          emb_height=100,
                          activation="relu",
                          L2_lambda=0.02,
