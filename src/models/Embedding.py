@@ -23,7 +23,7 @@ class Embedding(TokenFeatures, Model):
         self.model = self.create_model()
 
     def create_after_emb(self, reshape1,
-                         conv_channels=2,
+                         conv_channels=1,
                          emb_height=100,
                          activation="linear",
                          L2_lambda=0.02,
@@ -62,7 +62,7 @@ class Embedding(TokenFeatures, Model):
                      conv_sizes: List[int] = [2, 4, 16],
                      emb_height: int = 100):
 
-        conv_channels = 2
+        conv_channels = 1
         input_layer = layers.Input(shape=(self.input_size, 1))
 
         embeddings = layers.Embedding(self.max_val, emb_height,
