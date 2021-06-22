@@ -69,8 +69,8 @@ class BaseTriplet:
         loss_val = tf.keras.backend.get_value(loss)
         cbc.on_epoch_end(self.Model.model, epoch, loss=loss_val)
         # update tree
-        # predictions = self.Model.model.predict(all_x)
-        # self.index = BallTree(predictions, metric="euclidean")
+        predictions = self.Model.model.predict(all_x)
+        self.index = BallTree(predictions, metric="euclidean")
 
     def loss_call(self, data_generator: Iterable, alpha: float, distance_metric: str):
         raise NotImplementedError
