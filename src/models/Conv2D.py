@@ -1,145 +1,74 @@
-import numpy as np
-import pandas as pd
+from src.models.base.Model import Model
+from src.models.data_processing.CharFeatures import CharFeatures
 
 from tensorflow import keras
-from models.Triplet import Triplet
 from tensorflow.keras import layers, regularizers
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 
-class Conv2D(Triplet):
+class Conv2D(CharFeatures, Model):
     def __init__(self,
                  output_size: int = 50,
                  img_x: int = 120,
                  img_y: int = 200,
-                 crop = None,
-                 make_initial_preprocess: bool = True):
+                 crop=None,
+                 make_initial_preprocess: bool = False):
 
-        self.img_x, self.img_y = img_x, img_y
-        if crop is None:
-            self.crop = self.img_y
-        super().__init__("conv2d", input_size=img_x*img_y, output_size=output_size,
-                         make_initial_preprocess=make_initial_preprocess)
+        self.output_size = output_size  # TODO: move to Model, probably, input_size -- ??
+        Model.__init__(self)
+        CharFeatures.__init__(self, name="conv2d",
+                              img_x=img_x, img_y=img_y, crop=crop,
+                              make_initial_preprocess=make_initial_preprocess)
+        self.input_size = img_x * self.crop
+        self.model = self.create_model()
+
+    def create_after_emb(self, reshape1,
+                         conv_channels=1,
+                         emb_height=100,
+                         activation="relu",
+                         L2_lambda=0.02,
+                         conv_sizes=[4, 8, 16]):
+        conv3d = layers.Conv3D(1, (4, 4, 10), padding="same",
+                               activation=activation, kernel_regularizer=regularizers.L2(L2_lambda),
+                               data_format="channels_last")(reshape1)
+        pooling3d = layers.MaxPooling3D(pool_size=(1, 1, emb_height), data_format="channels_last")(conv3d)
+        rs = layers.Reshape((self.crop, self.img_x, 1))(pooling3d)
+        # parallel piece
+        convolutions = [layers.Conv2D(conv_channels, (conv_size, conv_size),
+                                      padding="same", activation=activation,
+                                      kernel_regularizer=regularizers.L2(L2_lambda),
+                                      data_format="channels_last")(rs) for conv_size in conv_sizes]
+
+        pools = [layers.MaxPooling2D(pool_size=4, padding="same",
+                                     data_format="channels_last")(conv) for conv in convolutions]
+
+        connect = layers.concatenate(pools, axis=3)
+        norm0 = layers.LayerNormalization(axis=-1)(connect)
+        drop1 = layers.Dropout(0.5)(norm0)
+
+        big_conv_channels = 1
+        big_convolution = layers.Conv2D(big_conv_channels, (4, emb_height),
+                                        padding="same", activation=activation,
+                                        kernel_regularizer=regularizers.L2(L2_lambda),
+                                        data_format="channels_last")(drop1)  # 100, 100, 4
+
+        flatten = layers.Flatten()(big_convolution)
+        norm1 = layers.LayerNormalization(axis=-1)(flatten)
+        drop2 = layers.Dropout(0.5)(norm1)
+        dense = layers.Dense(self.output_size)(drop2)
+        return dense
 
     def create_model(self):
         emb_height = 100
-        model_core = keras.Sequential()
-        model_core.add(layers.Input((self.crop, self.img_x)))
-        model_core.add(layers.Reshape((self.crop * self.img_x, 1)))
-        model_core.add(layers.Embedding(756452 + 1, emb_height, mask_zero=True,
-                                        input_length=self.crop * self.img_x))  # output shape: (-1, x*y, 100)
 
-        # model_core.add(layers.LayerNormalization(axis=2))
-        model_core.add(layers.Reshape((self.crop * self.img_x, 100, 1)))
+        input_layer = layers.Input((self.crop * self.img_x, 1))
+        # rs1 = layers.Reshape((self.crop * self.img_x, 1))(input_layer)
+        embedding = layers.Embedding(756452 + 1, emb_height, mask_zero=True,
+                                     input_length=self.crop * self.img_x)(input_layer)
+        rs2 = layers.Reshape((self.crop, self.img_x, emb_height, 1))(embedding)
 
-        # pooling to reduce the dimensionality:
-        model_core.add(layers.AveragePooling2D(pool_size=(1, 100),
-                                               data_format="channels_last"))  # output shape: -1, 1, x*y, 1
-        model_core.add(layers.Reshape((self.crop, self.img_x, 1)))
+        # parallelism
+        dense = self.create_after_emb(rs2, conv_channels=1)
 
-        model_core.add(layers.Conv2D(16, 16, activation="relu", padding="same"))
-        model_core.add(layers.MaxPooling2D(pool_size=4))
-        model_core.add(layers.Dropout(0.5))
-        model_core.add(layers.Conv2D(16, 4, activation="relu", padding="same"))
-        model_core.add(layers.MaxPooling2D(pool_size=4))
-        model_core.add(layers.Dropout(0.5))
-        model_core.add(layers.Conv2D(16, 4, activation="relu", padding="same"))
-        model_core.add(layers.MaxPooling2D(pool_size=4))
-        model_core.add(layers.Dropout(0.5))
-        model_core.add(layers.Flatten())
-        model_core.add(layers.Dense(128, activation="tanh"))
-        model_core.add(layers.LayerNormalization(axis=1))
-        model_core.add(layers.Dropout(0.5))
-        model_core.add(layers.Dense(self.output_size, activation="tanh"))
-        return model_core
-
-    @staticmethod
-    def _path_to_x(y_path: str):
-        x_path = y_path[:-4]  # "json" removed
-        x_path += "txt"
-        return x_path
-
-    def initial_preprocess(self,
-                           df_path: str,
-                           tmp_dataset_filename: str):
-
-        df = pd.read_csv(df_path)
-        df = df.drop(columns=["round", "task", "solution", "file", "full_path", "Unnamed: 0.1", "Unnamed: 0", "lang"])
-        df["n_lines"] = df.flines.apply(lambda x: str(x).count("\n"))
-        df = df[(df.n_lines >= 30) & (df.n_lines < self.img_y)]  # there should be enough loc for 2D convolution
-
-        def max_cpl(file: str):
-            """"
-            Max chars per line
-            """
-            lines = file.split('\n')
-            max_ch = 0
-            for line in lines:
-                if len(line) > max_ch:
-                    max_ch = len(line)
-            return max_ch
-
-        df["max_cpl"] = df.flines.apply(max_cpl)
-        df = df[df.max_cpl <= self.img_x]
-        # select users
-        users = df.username.value_counts()[0:500].index
-        df = df[df.username.isin(users)]
-        # string to int for y
-        le = LabelEncoder()
-        df.username = le.fit_transform(df.username)
-
-        def to_vector(file: str):
-            lines = file.split("\n")
-            res = np.zeros((self.img_y, self.img_x), dtype=int)
-            for i in range(len(lines)):
-                if i >= self.img_y:
-                    break
-                line = lines[i]
-                for j in range(len(line)):
-                    res[i][j] = ord(line[j])
-            return res.tolist()
-
-        X = df.flines.apply(to_vector).values
-        X = np.array([np.array(x) for x in X])
-        # scale
-        # ss = StandardScaler()
-        # X = ss.fit_transform(X.reshape((-1, self.img_y * self.img_x))).reshape((-1, self.img_y, self.img_x))
-        X = X.reshape((-1, self.img_y, self.img_x))
-        # save X and y separately
-        x_file = open(self._path_to_x(tmp_dataset_filename), "wb")
-        np.save(x_file, X)
-        x_file.close()
-        dataset = df[["username"]]
-        dataset.to_json(tmp_dataset_filename)
-
-    def crop_to(self,
-                X: np.ndarray,
-                y: np.ndarray,
-                threshold: int = 80):
-
-        new_X = []
-        new_y = []
-        for old_x, old_y in zip(X, y):
-            for el in old_x.reshape(-1, self.crop, self.img_x):
-                if np.count_nonzero(el) > threshold * self.crop // 100:
-                    new_X.append(list(el))
-                    new_y.append(old_y)
-
-        new_X = np.array(new_X).reshape((-1, self.crop, self.img_x))
-        new_y = np.array(new_y)
-        return new_X, new_y
-
-    def secondary_preprocess(self, tmp_dataset_filename: str):
-        df = pd.read_json(tmp_dataset_filename)
-        y = np.array(df.username)
-        # read X
-        file = open(self._path_to_x(tmp_dataset_filename), "rb")
-        X = np.load(file)
-        file.close()
-        # chunking
-        X, y = self.crop_to(X, y, 50)
-
-        # train-test split
-        X_train, X_test, y_train, y_test = train_test_split(X, y)
-        return X_train, X_test, y_train, y_test
+        result = keras.models.Model(input_layer, dense)
+        keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)
+        return result

@@ -1,14 +1,11 @@
-import numpy as np
-import pandas as pd
+from src.models.base.Model import Model
+from src.models.data_processing.TokenFeatures import TokenFeatures
 
 from tensorflow import keras
-from models.Triplet import Triplet
 from tensorflow.keras import layers, regularizers
-from sklearn.model_selection import train_test_split
-from src.data_processing.commons import std_initial_preprocess
 
 
-class Linear(Triplet):
+class Linear(TokenFeatures, Model):
 
     def __init__(self,
                  input_size: int = 600,
@@ -17,8 +14,11 @@ class Linear(Triplet):
         # name left the same, because training data and its preprocessing are the same
         # as for 'Embedding(Triplet)'
 
-        super().__init__("embedding", input_size=input_size, output_size=output_size,
-                         make_initial_preprocess=make_initial_preprocess)
+        self.output_size = output_size
+        Model.__init__()
+        TokenFeatures.__init__(name="embedding",
+                               input_size=input_size,
+                               make_initial_preprocess=make_initial_preprocess)
 
     def create_model(self,
                      activation: str = "linear",
@@ -56,16 +56,3 @@ class Linear(Triplet):
                                     kernel_regularizer=regularizers.L2(L2_lambda)))
         model_core.add(layers.LayerNormalization(axis=1))
         return model_core
-
-    def initial_preprocess(self, df_path: str, tmp_dataset_filename: str):
-        std_initial_preprocess(self.input_size, df_path, tmp_dataset_filename)
-
-    def secondary_preprocess(self, tmp_dataset_filename: str):
-        dataset = pd.read_json(tmp_dataset_filename)
-
-        X = dataset.tokens.values
-        X = np.array(list(X)).reshape((-1, self.input_size))
-
-        y = np.array(dataset.username)
-        X_train, X_test, y_train, y_test = train_test_split(X, y)
-        return X_train, X_test, y_train, y_test

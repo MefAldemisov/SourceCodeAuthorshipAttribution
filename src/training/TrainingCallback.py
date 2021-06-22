@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 from typing import List
 from sklearn.manifold import TSNE
 from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.neighbors import KNeighborsClassifier
 
-
-class TestCallback:
+class TrainingCallback:
 
     def __init__(self,
                  X_train: np.ndarray,
@@ -42,13 +42,14 @@ class TestCallback:
         # x-y preprocessing
         self.authors = authors
 
-        index = np.where(np.isin(y_train, self.authors))[0]
-        self.X_train = X_train[index]
-        self.y_train = y_train[index]
+        def select_authors(initial_x, initial_y):
+            index = np.where(np.isin(initial_y, self.authors))[0]
+            new_x, new_y = map(lambda a: a[index], [initial_x, initial_y])
+            return new_x, new_y
 
-        index = np.where(np.isin(y_test, self.authors))[0]
-        self.X_test = X_test[index]
-        self.y_test = y_test[index]
+        self.X_train, self.y_train = select_authors(X_train, y_train)
+        self.X_test, self.y_test = select_authors(X_test, y_test)
+
         # counter initialization
         self.n = 0
         print(model_name)
@@ -94,19 +95,10 @@ class TestCallback:
                            is_test: bool):
 
         transformed_x = model.predict(x)
-
-        mse = lambda a, b: np.mean((a - b) ** 2)
-        y_pred, y_true = [], []
-        for i in range(x.shape[0]):
-            for j in range(i, x.shape[0]):
-                distance = mse(transformed_x[i], transformed_x[j])
-                y_pred.append(int(distance <= self.threshold))
-                y_true.append(int(y[i] == y[j]))
-
-        y_pred, y_true = np.array(y_pred), np.array(y_true)
-        accuracy = accuracy_score(y_true, y_pred)
-        cm = confusion_matrix(y_true, y_pred)
-        recall = cm[1][1] / sum(y_true)
+        knn = KNeighborsClassifier().fit(transformed_x, y)
+        predictions = knn.predict(transformed_x)
+        accuracy = accuracy_score(y_true=y, y_pred=predictions)
+        recall = 0
         self.apply_dimensionality_reduction(transformed_x, y, epoch, is_test)
         return accuracy, recall
 
