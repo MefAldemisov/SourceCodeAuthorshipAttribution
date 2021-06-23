@@ -87,6 +87,7 @@ class DataLoader:
         return new_X, new_y
 
     def preprocess(self,
+                   tmp_dataset_filename: str = None,
                    df_path: str = "../inputs/processed_dfs/py_df.csv",
                    tmp_dataset_dir: str = "../inputs/preprocessed_jsons/") -> Tuple[np.ndarray, np.ndarray,
                                                                                     np.ndarray, np.ndarray]:
@@ -107,7 +108,8 @@ class DataLoader:
         -------
         X_train, X_test, y_train, y_test - values to be used by the train method
         """
-        tmp_dataset_filename = tmp_dataset_dir + self.name + "_train.json"
+        if tmp_dataset_filename is None:
+            tmp_dataset_filename = tmp_dataset_dir + self.name + "_train.json"
         if self.make_initial_preprocess:
             self.initial_preprocess(df_path, tmp_dataset_filename)
         return self.secondary_preprocess(tmp_dataset_filename)

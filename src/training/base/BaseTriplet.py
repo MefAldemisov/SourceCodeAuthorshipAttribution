@@ -69,8 +69,8 @@ class BaseTriplet:
         loss_val = tf.keras.backend.get_value(loss)
         cbc.on_epoch_end(self.Model.model, epoch, loss=loss_val)
         # update tree
-        predictions = self.Model.model.predict(all_x)
-        self.index = BallTree(predictions, metric="euclidean")
+        # predictions = self.Model.model.predict(all_x)
+        # self.index = BallTree(predictions, metric="euclidean")
 
     def loss_call(self, data_generator: Iterable, alpha: float, distance_metric: str):
         raise NotImplementedError
@@ -105,7 +105,8 @@ class BaseTriplet:
               distance_metric: str = "euclidean",
               alpha: float = 0.1):
 
-        X_train, x_test, y_train, y_test = self.Model.preprocess()
+        X_train, x_test, y_train, y_test = self.Model.preprocess(tmp_dataset_filename=
+                                                                 "../inputs/preprocessed_jsons/overfit.json")
 
         steps_per_epoch = int(X_train.shape[0] / batch_size)
         optimizer = optimizers.Adam(0.0001)
