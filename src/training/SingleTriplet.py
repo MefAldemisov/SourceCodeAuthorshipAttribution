@@ -29,7 +29,7 @@ class SingleTriplet(BaseTriplet):
                                                                                  self.Model.input_size,
                                                                                  1))
 
-        return map(tf.convert_to_tensor, [anchor, positive, negative])
+        return map(lambda x: tf.convert_to_tensor(x, dtype=tf.int32), [anchor, positive, negative])
 
     def triplet_loss(self,
                      args: List[tf.Tensor],

@@ -1,11 +1,14 @@
 from src.visualization.base.Visualizer import Visualizer
 import numpy as np
-import pandas as pd
-import sentencepiece as spm
+# import pandas as pd
+# import sentencepiece as spm
+import tensorflow_text as text
 import matplotlib.cm as cm
 import tensorflow as tf
+
 from src.models.data_processing.TokenFeatures import TokenFeatures
 from src.models.Embedding import Embedding
+
 
 class VisualizerTokenFeatures(Visualizer):
     def __init__(self):
@@ -15,7 +18,9 @@ class VisualizerTokenFeatures(Visualizer):
                          snippet_index=0)
 
     def show_html(self, token_impact: np.ndarray, initial_tokens: np.ndarray, label_index: int = 0):
-        sp = spm.SentencePieceProcessor(model_file='../inputs/embd/sentencepiece_bpe.model')
+        # sp = spm.SentencePieceProcessor(model_file='../inputs/embd/sentencepiece_bpe.model')
+        tokenizer = text.BertTokenizer("../inputs/bert_tokens.model")
+
         arr = np.zeros(99757)
         color_map = cm.get_cmap("Reds")
 
@@ -26,7 +31,7 @@ class VisualizerTokenFeatures(Visualizer):
                 # if impact > 0.5:
                 arr[int(token)] += 1
                 local_impact = self.get_color(color_map, impact)
-                word = sp.decode(int(token))
+                word = tokenizer.detokenize(int(token))
 
                 file.write("<span style='background-color: rgba({}, {}, {}, {})'>{}</span>"
                            .format(*local_impact, word))
@@ -53,13 +58,13 @@ class VisualizerTokenFeatures(Visualizer):
     def run(self):
         # create a new file
         with open("../outputs/text_{}.html".format(self.model_name), "w") as file:
-            file.write("<main>")
+            file.write("<main style='word-wrap: break-word;'>")
 
         snippet_length = 100  # initially 600
 
-        input = tf.keras.layers.Input((snippet_length, 100, 1))
-        output = Embedding().create_after_emb(input)
-        clean_model = tf.keras.models.Model(input, output)
+        input_layer = tf.keras.layers.Input((snippet_length, 100, 1))
+        output = Embedding().create_after_emb(input_layer)
+        clean_model = tf.keras.models.Model(input_layer, output)
 
         heatmap = self.get_heatmap(target_shape=(-1, snippet_length), clean_model=clean_model, layers_to_cut=3)
         frequency = np.zeros((self.x_batch.shape[0], 99757))
