@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from typing import List
 from sklearn.manifold import TSNE
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 
 class TrainingCallback:
@@ -47,8 +47,19 @@ class TrainingCallback:
             new_x, new_y = map(lambda a: a[index], [initial_x, initial_y])
             return new_x, new_y
 
-        self.X_train, self.y_train = select_authors(X_train, y_train)
-        self.X_test, self.y_test = select_authors(X_test, y_test)
+        simple_x_train, simple_y_train = select_authors(X_train, y_train)
+        simple_x_test, simple_y_test = select_authors(X_test, y_test)
+
+        self.data = {
+            "simple": {
+                "train": [simple_x_train, simple_y_train],
+                "test": [simple_x_test, simple_y_test]
+            },
+            "full": {
+                "train": [X_train, y_train],
+                "test": [X_test, y_test]
+            }
+        }
 
         # counter initialization
         self.n = 0
@@ -87,36 +98,50 @@ class TrainingCallback:
 
         plt.close("all")
 
-    def get_acc_and_recall(self,
-                           model: tf.keras.Model,
-                           x: np.ndarray,
-                           y: np.ndarray,
-                           epoch: int,
-                           is_test: bool):
+    def get_acc(self,
+                model: tf.keras.Model,
+                x: np.ndarray,
+                y: np.ndarray,
+                epoch: int,
+                is_test: bool,
+                dim_red: True) -> float:
 
         transformed_x = model.predict(x)
         knn = KNeighborsClassifier().fit(transformed_x, y)
         predictions = knn.predict(transformed_x)
         accuracy = accuracy_score(y_true=y, y_pred=predictions)
-        recall = 0
-        self.apply_dimensionality_reduction(transformed_x, y, epoch, is_test)
-        return accuracy, recall
+        if dim_red:
+            self.apply_dimensionality_reduction(transformed_x, y, epoch, is_test)
+        return accuracy
+
+    def _writer(self,
+                x: np.ndarray,
+                y: np.ndarray,
+                model: tf.keras.Model,
+                epoch: int,
+                is_test: bool,
+                is_simple: bool) -> float:
+
+        accuracy = self.get_acc(model, x, y, epoch, is_test, is_simple)
+        summary_writer = self.test_summary_writer if is_test else self.train_summary_writer
+        test_prefix = "test" if is_test else "train"
+        subset_prefix = "s" if is_simple else "f"
+        scalar_name = "{}_{}_accuracy".format(subset_prefix, test_prefix)
+        with summary_writer.as_default():
+            tf.summary.scalar(scalar_name, accuracy, step=self.n)
+        return accuracy
 
     def on_epoch_end(self,
                      model: tf.keras.Model,
                      epoch: int,
                      loss: float):
 
-        test_accuracy, test_recall = self.get_acc_and_recall(model, self.X_test, self.y_test, epoch, True)
-        with self.test_summary_writer.as_default():
-            tf.summary.scalar("test_accuracy", test_accuracy, step=self.n)
-            tf.summary.scalar("test_recall", test_recall, step=self.n)
+        astr = self._writer(*self.data["simple"]["train"], model, epoch, False, True)
+        aste = self._writer(*self.data["simple"]["test"], model, epoch, True, True)
+        afte = self._writer(*self.data["full"]["test"], model, epoch, True, False)  # takes time (approx 7 mins on CPU)
 
-        train_accuracy, train_recall = self.get_acc_and_recall(model, self.X_train, self.y_train, epoch, False)
         with self.train_summary_writer.as_default():
-            tf.summary.scalar("train_accuracy", train_accuracy, step=self.n)
-            tf.summary.scalar("train_recall", train_recall, step=self.n)
             tf.summary.scalar("train_loss", loss, step=self.n)
 
-        print(loss, test_accuracy, test_recall, train_accuracy, train_recall)
+        print(loss, astr, aste, afte)
         self.n += 1
