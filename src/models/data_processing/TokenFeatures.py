@@ -10,7 +10,7 @@ from src.models.data_processing.base.DataLoading import DataLoader
 
 bert_vocab_args = {
     "vocab_size": 80000,
-    "reserved_tokens": [],
+    "reserved_tokens": ["[TAB]", "[SPC]", "[NLN]"],
     "bert_tokenizer_params": {},
     "learn_params": {},
 }
@@ -33,10 +33,18 @@ class TokenFeatures(DataLoader):
             for token in vocab:
                 print(token, file=f)
 
+    def _insert_tokens(self, x: str):
+        x = x.replace("\n", "[NLN]")
+        x = x.replace("\t", "[TAB]")
+        x = x.replace(" ", "[SPC]")
+        return x
+
     def initial_preprocess(self, df_path: str, tmp_dataset_filename: str):
         df = self._initial_load(df_path)
         df = df[(df.n_lines > 0)]
         # tokenize. requires time (approx 1h)
+
+        df.flines = df.flines.apply(self._insert_tokens)
         text_dataset = tf.data.Dataset.from_tensor_slices(df.flines.values)
         vocab = bert_vocab.bert_vocab_from_dataset(
             text_dataset,

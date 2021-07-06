@@ -12,7 +12,7 @@ from src.models.Embedding import Embedding
 
 class VisualizerTokenFeatures(Visualizer):
     def __init__(self):
-        data_loader = TokenFeatures(name="embedding", make_initial_preprocess=False)
+        data_loader = TokenFeatures(name="embedding", make_initial_preprocess=False, input_size=100)
         super().__init__(model_name="embedding",
                          data_loader=data_loader,
                          snippet_index=0)
@@ -31,7 +31,15 @@ class VisualizerTokenFeatures(Visualizer):
                 # if impact > 0.5:
                 arr[int(token)] += 1
                 local_impact = self.get_color(color_map, impact)
-                word = tokenizer.detokenize(int(token))
+                word = tokenizer.detokenize([[int(token)]]).to_list()[0][0].decode("utf-8")
+                # special tokens
+                if word == "TAB":
+                    word = "    "
+                elif word == "SPC":
+                    word = " "
+                elif word == "NLN":
+                    file.write("<br>")
+                    continue
 
                 file.write("<span style='background-color: rgba({}, {}, {}, {})'>{}</span>"
                            .format(*local_impact, word))
