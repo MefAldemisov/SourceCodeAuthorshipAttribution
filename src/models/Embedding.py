@@ -1,6 +1,6 @@
 from typing import List
-from src.models.base.Model import Model
-from src.models.data_processing.TokenFeatures import TokenFeatures
+from models.base.Model import Model
+from models.data_processing.TokenFeatures import TokenFeatures
 from tensorflow.keras import layers, regularizers, models, initializers
 from tensorflow import keras
 
@@ -30,7 +30,7 @@ class Embedding(TokenFeatures, Model):
                          conv_sizes=[2, 4, 16]):
         # parallel piece
         convolutions = [layers.Conv2D(conv_channels, (conv_size, emb_height),
-                                      name="conv2d_size({}, {})".format(conv_size, emb_height),
+                                      name="conv2d_size_{}_{}".format(conv_size, emb_height),
                                       padding="same", activation=activation,
                                       kernel_initializer=initializers.HeNormal(),
                                       kernel_regularizer=regularizers.L2(L2_lambda),
@@ -38,7 +38,6 @@ class Embedding(TokenFeatures, Model):
                                       data_format="channels_last")(reshape1) for conv_size in conv_sizes]
 
         pools = [layers.MaxPooling2D(pool_size=(self.input_size, 1),
-                                     name="max_pool_size({}, {})".format(self.input_size, 1),
                                      data_format="channels_last")(conv) for conv in convolutions]
 
         connect = layers.concatenate(pools, axis=3)
@@ -48,7 +47,7 @@ class Embedding(TokenFeatures, Model):
         big_conv_channels = 2
         big_convolution = layers.Conv2D(big_conv_channels, (4, emb_height),
                                         padding="same", activation=activation,
-                                        name="conv2d_size({}, {})".format(4, emb_height),
+                                        name="main_conv2d_size_{}_{}".format(4, emb_height),
                                         kernel_initializer=initializers.HeNormal(),
                                         kernel_regularizer=regularizers.L2(L2_lambda),
                                         input_shape=(1, self.input_size, emb_height),
@@ -80,5 +79,5 @@ class Embedding(TokenFeatures, Model):
         result = models.Model(input_layer, dense)
 
         print(result.summary())
-        keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)
+        # keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)
         return result

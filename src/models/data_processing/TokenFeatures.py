@@ -5,7 +5,7 @@ import tensorflow_text as text
 from typing import List
 from tensorflow_text.tools.wordpiece_vocab import bert_vocab_from_dataset as bert_vocab
 from sklearn.model_selection import train_test_split
-from src.models.data_processing.base.DataLoading import DataLoader
+from models.data_processing.base.DataLoading import DataLoader
 
 
 bert_vocab_args = {

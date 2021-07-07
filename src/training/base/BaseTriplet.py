@@ -1,6 +1,6 @@
-from src.training.TrainingCallback import TrainingCallback
-from src.models.base.Model import Model
-from src.models.data_processing.base.DataLoading import DataLoader
+from training.TrainingCallback import TrainingCallback
+from models.base.Model import Model
+from models.data_processing.base.DataLoading import DataLoader
 import numpy as np
 import tqdm
 import tensorflow as tf
@@ -28,7 +28,7 @@ class BaseTriplet:
 
         if self.index is not None:
             query = self.Model.model.predict(X[anchor_index])
-            query_res = self.index.query(query, batch_size, return_distance=False)[0]
+            query_res = self.index.query(query, 3*batch_size, return_distance=False)[0]
             negative_indexes = np.array([neighbour_index for neighbour_index in query_res
                                          if y[neighbour_index] != y_anchor])[:k]
         else:  # the first batch generation

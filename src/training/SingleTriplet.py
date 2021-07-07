@@ -3,7 +3,7 @@ from typing import List, Iterator
 import numpy as np
 import tensorflow as tf
 
-from src.training.base.BaseTriplet import BaseTriplet
+from training.base.BaseTriplet import BaseTriplet
 
 
 class SingleTriplet(BaseTriplet):

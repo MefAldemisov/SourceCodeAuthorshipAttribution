@@ -89,6 +89,8 @@ KeractVisualizer("embedding").run()
 >> tensorboard --logdir=outputs/tensor_board
 >> source ./venv/bin/activate
 >> source /opt/anaconda/bin/activate root
+>> docker run --gpus all --device /dev/nvidia0 --device /dev/nvidia-uvm --device /dev/nvidia-uvm-tools --device /dev/nvidiactl -v /home/alina/SourceCodeAuthorshipAttribution/:/usr/app/ 748cf8b681db python /usr/app/src/main.py
+>> docker build -t scaa . 
 ```
 
 ## Useful links
