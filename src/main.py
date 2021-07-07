@@ -7,8 +7,8 @@ from visualization.VisualizerCharFeatures import VisualizerCharFeatures
 
 model = Embedding(input_size=100, output_size=50, make_initial_preprocess=False)
 SingleTriplet(model=model).train(batch_size=16, epochs=1)
-# VisualizerTokenFeatures().run()
+VisualizerTokenFeatures().run()
 
-# model = Conv2D(crop=20)
+# model = Conv2D()
 # SingleTriplet(model=model).train(batch_size=16, epochs=1)
 # VisualizerCharFeatures().run()

@@ -34,9 +34,9 @@ class TokenFeatures(DataLoader):
                 print(token, file=f)
 
     def _insert_tokens(self, x: str):
-        x = x.replace("\n", "[NLN]")
-        x = x.replace("\t", "[TAB]")
-        x = x.replace(" ", "[SPC]")
+        x = x.replace("\n", "^NLN^")
+        x = x.replace("\t", "^TAB^")
+        x = x.replace(" ", "^SPC^")
         return x
 
     def initial_preprocess(self, df_path: str, tmp_dataset_filename: str):
