@@ -1,6 +1,6 @@
 from typing import List
-from models.base.Model import Model
-from models.data_processing.TokenFeatures import TokenFeatures
+from src.models.base.Model import Model
+from src.models.data_processing.TokenFeatures import TokenFeatures
 from tensorflow.keras import layers, regularizers, models, initializers
 from tensorflow import keras
 
@@ -8,7 +8,8 @@ from tensorflow import keras
 class Embedding(TokenFeatures, Model):
 
     def __init__(self,
-                 input_size: int = 100,
+                 input_size: int = 800,
+                 crop: int = 200,
                  output_size: int = 50,
                  make_initial_preprocess: bool = False,
                  max_val: int = 80000 + 1):
@@ -19,6 +20,7 @@ class Embedding(TokenFeatures, Model):
         Model.__init__(self)
         TokenFeatures.__init__(self, name="embedding",
                                input_size=input_size,
+                               crop=crop,
                                make_initial_preprocess=make_initial_preprocess)
         self.model = self.create_model()
 
@@ -34,10 +36,10 @@ class Embedding(TokenFeatures, Model):
                                       padding="same", activation=activation,
                                       kernel_initializer=initializers.HeNormal(),
                                       kernel_regularizer=regularizers.L2(L2_lambda),
-                                      input_shape=(1, self.input_size, emb_height),
+                                      input_shape=(1, self.crop, emb_height),
                                       data_format="channels_last")(reshape1) for conv_size in conv_sizes]
 
-        pools = [layers.MaxPooling2D(pool_size=(self.input_size, 1),
+        pools = [layers.MaxPooling2D(pool_size=(self.crop, 1),
                                      data_format="channels_last")(conv) for conv in convolutions]
 
         connect = layers.concatenate(pools, axis=3)
@@ -50,7 +52,7 @@ class Embedding(TokenFeatures, Model):
                                         name="main_conv2d_size_{}_{}".format(4, emb_height),
                                         kernel_initializer=initializers.HeNormal(),
                                         kernel_regularizer=regularizers.L2(L2_lambda),
-                                        input_shape=(1, self.input_size, emb_height),
+                                        input_shape=(1, self.crop, emb_height),
                                         data_format="channels_last")(drop1)  # 100, 100, 4
 
         reshape2 = layers.Reshape((-1, emb_height * big_conv_channels))(big_convolution)
@@ -68,16 +70,16 @@ class Embedding(TokenFeatures, Model):
                      emb_height: int = 100):
 
         conv_channels = 1
-        input_layer = layers.Input(shape=(self.input_size, 1))
+        input_layer = layers.Input(shape=(self.crop, 1))
 
         embeddings = layers.Embedding(self.max_val, emb_height,
                                       mask_zero=True, input_length=self.input_size)(input_layer)
 
-        reshape1 = layers.Reshape((self.input_size, emb_height, 1))(embeddings)
+        reshape1 = layers.Reshape((self.crop, emb_height, 1))(embeddings)
 
         dense = self.create_after_emb(reshape1, conv_channels, emb_height, activation, L2_lambda, conv_sizes)
         result = models.Model(input_layer, dense)
 
         print(result.summary())
-        # keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)
+        keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)
         return result

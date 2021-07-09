@@ -12,7 +12,8 @@ from src.models.Embedding import Embedding
 
 class VisualizerTokenFeatures(Visualizer):
     def __init__(self):
-        data_loader = TokenFeatures(name="embedding", make_initial_preprocess=False, input_size=100)
+        data_loader = TokenFeatures(name="embedding", make_initial_preprocess=False,
+                                    input_size=800, crop=200)
         super().__init__(model_name="embedding",
                          data_loader=data_loader,
                          snippet_index=0)
@@ -68,7 +69,7 @@ class VisualizerTokenFeatures(Visualizer):
         with open("../outputs/text_{}.html".format(self.model_name), "w") as file:
             file.write("<main style='word-wrap: break-word;'>")
 
-        snippet_length = 100  # initially 600
+        snippet_length = 200  # initially 600
 
         input_layer = tf.keras.layers.Input((snippet_length, 100, 1))
         output = Embedding().create_after_emb(input_layer)

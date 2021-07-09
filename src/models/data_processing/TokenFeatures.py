@@ -5,12 +5,12 @@ import tensorflow_text as text
 from typing import List
 from tensorflow_text.tools.wordpiece_vocab import bert_vocab_from_dataset as bert_vocab
 from sklearn.model_selection import train_test_split
-from models.data_processing.base.DataLoading import DataLoader
+from src.models.data_processing.base.DataLoading import DataLoader
 
 
 bert_vocab_args = {
     "vocab_size": 80000,
-    "reserved_tokens": ["[TAB]", "[SPC]", "[NLN]"],
+    "reserved_tokens": ["^TAB^", "^SPC^", "^NLN^"],
     "bert_tokenizer_params": {},
     "learn_params": {},
 }
@@ -20,8 +20,8 @@ class TokenFeatures(DataLoader):
 
     def __init__(self,
                  name: str,
-                 input_size: int = 500,
-                 crop=100,
+                 input_size: int = 600,
+                 crop=200,
                  make_initial_preprocess: bool = True):
         self.input_size = input_size
         crop = input_size if crop is None else crop
@@ -46,6 +46,7 @@ class TokenFeatures(DataLoader):
 
         df.flines = df.flines.apply(self._insert_tokens)
         text_dataset = tf.data.Dataset.from_tensor_slices(df.flines.values)
+
         vocab = bert_vocab.bert_vocab_from_dataset(
             text_dataset,
             **bert_vocab_args
@@ -93,5 +94,7 @@ class TokenFeatures(DataLoader):
 
         y = np.array(dataset.username)
         X, y = self._crop_to(X, y, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
-        X_train, X_test, y_train, y_test = train_test_split(X, y)
+        self.input_size = self.crop
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
         return X_train, X_test, y_train, y_test
