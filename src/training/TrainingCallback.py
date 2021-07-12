@@ -138,7 +138,7 @@ class TrainingCallback:
 
         astr = self._writer(*self.data["simple"]["train"], model, epoch, False, True)
         aste = self._writer(*self.data["simple"]["test"], model, epoch, True, True)
-        afte = self._writer(*self.data["full"]["test"], model, epoch, True, False)  # takes time (approx 7 mins on CPU)
+        afte = self._writer(*self.data["full"]["test"], model, epoch, True, False)
 
         with self.train_summary_writer.as_default():
             tf.summary.scalar("train_loss", loss, step=self.n)

@@ -28,7 +28,7 @@ class BaseTriplet:
 
         if self.index is not None:
             query = self.Model.model.predict(X[anchor_index])
-            query_res = self.index.query(query, 3*batch_size, return_distance=False)[0]
+            query_res = self.index.query(query, 5*batch_size, return_distance=False)[0]
             negative_indexes = np.array([neighbour_index for neighbour_index in query_res
                                          if y[neighbour_index] != y_anchor])[:k]
         else:  # the first batch generation
@@ -57,17 +57,19 @@ class BaseTriplet:
     def on_batch_end(self, loss: tf.Tensor,
                      cbc: TrainingCallback,
                      epoch: int,
-                     all_x: np.ndarray):
+                     all_x: np.ndarray,
+                     step: int):
         """
         :param loss: loss of the batch training
         :param cbc: callback object
         :param epoch: int, index of the epoch
         :param all_x: x value to rebuild the tree
         """
-        self.Model.model.save("../outputs/{}.h".format(self.Model.name))
+        self.Model.model.save("../outputs/{}_{}.h".format(self.Model.name, epoch))
         # get statistics
-        loss_val = tf.keras.backend.get_value(loss)
-        cbc.on_epoch_end(self.Model.model, epoch, loss=loss_val)
+        if step % 10 == 0:
+            loss_val = tf.keras.backend.get_value(loss)
+            cbc.on_epoch_end(self.Model.model, epoch, loss=loss_val)
         # update tree
         predictions = self.Model.model.predict(all_x)
         self.index = BallTree(predictions, metric="euclidean")
@@ -83,10 +85,9 @@ class BaseTriplet:
                       cbc: TrainingCallback,
                       alpha: float = 0.2,
                       distance_metric: str = "euclidean"):
-        # loss_function = self.triplet_loss
 
         for epoch in range(epochs):
-            for _ in tqdm.tqdm(range(steps_per_epoch)):
+            for step in tqdm.tqdm(range(steps_per_epoch)):
                 with tf.GradientTape() as tape:
                     loss = self.loss_call(data_generator, alpha, distance_metric)
                     # update gradient
@@ -96,7 +97,7 @@ class BaseTriplet:
                 # assert np.isnan(self.Model.model(triplets[-1]).numpy()).sum() == 0, "`nan` in the model's predictions"
 
                 loss = tf.reduce_mean(loss, axis=0)[0]
-                self.on_batch_end(loss, cbc, epoch, all_x)
+                self.on_batch_end(loss, cbc, epoch, all_x, step)
             optimizer.lr = optimizer.lr * 0.9
 
     def train(self,

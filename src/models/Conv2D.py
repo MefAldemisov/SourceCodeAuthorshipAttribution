@@ -13,7 +13,7 @@ class Conv2D(CharFeatures, Model):
                  crop=None,
                  make_initial_preprocess: bool = False):
 
-        self.output_size = output_size  # TODO: move to Model, probably, input_size -- ??
+        self.output_size = output_size # TODO: move to Model, probably, input_size -- ??
         Model.__init__(self)
         CharFeatures.__init__(self, name="conv2d",
                               img_x=img_x, img_y=img_y, crop=crop,

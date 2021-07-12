@@ -5,7 +5,7 @@ import tensorflow_text as text
 from typing import List
 from tensorflow_text.tools.wordpiece_vocab import bert_vocab_from_dataset as bert_vocab
 from sklearn.model_selection import train_test_split
-from src.models.data_processing.base.DataLoading import DataLoader
+from models.data_processing.base.DataLoading import DataLoader
 
 
 bert_vocab_args = {
@@ -44,23 +44,25 @@ class TokenFeatures(DataLoader):
         df = df[(df.n_lines > 0)]
         # tokenize. requires time (approx 1h)
 
-        df.flines = df.flines.apply(self._insert_tokens)
-        text_dataset = tf.data.Dataset.from_tensor_slices(df.flines.values)
-
-        vocab = bert_vocab.bert_vocab_from_dataset(
-            text_dataset,
-            **bert_vocab_args
-        )
-        self._write_vocab_file("../inputs/bert_tokens.model", vocab)
+        # df.flines = df.flines.apply(self._insert_tokens)
+        # text_dataset = tf.data.Dataset.from_tensor_slices(df.flines.values)
+        #
+        # vocab = bert_vocab.bert_vocab_from_dataset(
+        #     text_dataset,
+        #     **bert_vocab_args
+        # )
+        # self._write_vocab_file("../inputs/bert_tokens.model", vocab)
         # read the tokenizer
         tokenizer = text.BertTokenizer("../inputs/bert_tokens.model")
 
-        # sp = spm.SentencePieceProcessor(model_file='../inputs/embd/sentencepiece_bpe.model')
+        # reduce the size of the dataset according to the n_tokens
         df.index = np.arange(len(df))
         df["n_tokens"] = df.flines.apply(lambda x: tokenizer.tokenize(x).shape[0])
         df = df[df.n_tokens <= self.input_size]
+        # reindex
+        df.index = np.arange(len(df))
         # reduce size
-        df = self._user_selection_and_encoding(df, 50, 500)
+        df = self._user_selection_and_encoding(df, 50, 450)
         # long saving
         # The issue is that `tokenizer.tokenize()` do not always return a shape (-1, 1).
         # Some elements of the result of the function could be a list, e.g. [[2929, 8524]].
@@ -72,6 +74,7 @@ class TokenFeatures(DataLoader):
         # < tf.RaggedTensor[[b'##dist']] >
         # I have decided to flatten these lists.
         df["tokens"] = df.flines.apply(lambda x: tokenizer.tokenize(x).to_list())
+
         df.tokens = df.tokens.apply(lambda x: list(pd.core.common.flatten(x)))
         dataset = df[["username", "tokens"]]
         # shuffle dataset

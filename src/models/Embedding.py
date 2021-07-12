@@ -32,7 +32,7 @@ class Embedding(TokenFeatures, Model):
                          conv_sizes=[2, 4, 16]):
         # parallel piece
         convolutions = [layers.Conv2D(conv_channels, (conv_size, emb_height),
-                                      name="conv2d_size_{}_{}".format(conv_size, emb_height),
+                                      name="conv2d_size_{}".format(conv_size),
                                       padding="same", activation=activation,
                                       kernel_initializer=initializers.HeNormal(),
                                       kernel_regularizer=regularizers.L2(L2_lambda),
@@ -49,7 +49,7 @@ class Embedding(TokenFeatures, Model):
         big_conv_channels = 2
         big_convolution = layers.Conv2D(big_conv_channels, (4, emb_height),
                                         padding="same", activation=activation,
-                                        name="main_conv2d_size_{}_{}".format(4, emb_height),
+                                        name="main_conv2d_size_{}".format(4),
                                         kernel_initializer=initializers.HeNormal(),
                                         kernel_regularizer=regularizers.L2(L2_lambda),
                                         input_shape=(1, self.crop, emb_height),
@@ -81,5 +81,5 @@ class Embedding(TokenFeatures, Model):
         result = models.Model(input_layer, dense)
 
         print(result.summary())
-        keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)
+        # keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)
         return result
