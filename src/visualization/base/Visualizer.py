@@ -2,8 +2,8 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-from src.models.data_processing.base.DataLoading import DataLoader
-from src.training.AvgTriplet import AverageTriplet
+from models.data_processing.base.DataLoading import DataLoader
+from training.AvgTriplet import AverageTriplet
 from matplotlib.colors import Colormap
 from tensorflow.keras.models import Model
 from tf_keras_vis.gradcam import Gradcam

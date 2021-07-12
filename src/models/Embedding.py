@@ -1,6 +1,6 @@
 from typing import List
-from src.models.base.Model import Model
-from src.models.data_processing.TokenFeatures import TokenFeatures
+from models.base.Model import Model
+from models.data_processing.TokenFeatures import TokenFeatures
 from tensorflow.keras import layers, regularizers, models, initializers
 from tensorflow import keras
 

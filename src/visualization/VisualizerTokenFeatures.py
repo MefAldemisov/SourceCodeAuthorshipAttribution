@@ -1,4 +1,4 @@
-from src.visualization.base.Visualizer import Visualizer
+from visualization.base.Visualizer import Visualizer
 import numpy as np
 # import pandas as pd
 # import sentencepiece as spm
@@ -6,8 +6,8 @@ import tensorflow_text as text
 import matplotlib.cm as cm
 import tensorflow as tf
 
-from src.models.data_processing.TokenFeatures import TokenFeatures
-from src.models.Embedding import Embedding
+from models.data_processing.TokenFeatures import TokenFeatures
+from models.Embedding import Embedding
 
 
 class VisualizerTokenFeatures(Visualizer):
