@@ -5,7 +5,7 @@ from models.Embedding import Embedding
 # from visualization.VisualizerTokenFeatures import VisualizerTokenFeatures
 # from visualization.VisualizerCharFeatures import VisualizerCharFeatures
 
-model = Embedding(input_size=800, crop=200, output_size=50, make_initial_preprocess=True)
+model = Embedding(input_size=800, crop=200, output_size=50, make_initial_preprocess=False)
 SingleTriplet(model=model).train(batch_size=16, epochs=40)
 # VisualizerTokenFeatures().run()
 
