@@ -52,7 +52,8 @@ class SingleTriplet(BaseTriplet):
                   data_generator: Iterator,
                   alpha: float,
                   distance_metric: str):
-        triplets = list(next(data_generator))
+
+        triplets = self.batch_generator_call(data_generator)
         embeddings = list(map(lambda x: self.Model.model(x, training=True), triplets))
         loss = self.triplet_loss(embeddings, alpha=alpha, distance_metric=distance_metric)
         return loss

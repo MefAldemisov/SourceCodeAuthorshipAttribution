@@ -5,7 +5,7 @@ import numpy as np
 import tqdm
 import tensorflow as tf
 
-from typing import Tuple, List, Iterable
+from typing import Tuple, List, Iterable, Iterator
 from tensorflow.keras import optimizers, callbacks
 # according to the documentation, BallTree is more efficient in high-dimensional case
 from sklearn.neighbors import BallTree
@@ -73,6 +73,16 @@ class BaseTriplet:
         # update tree
         predictions = self.Model.model.predict(all_x)
         self.index = BallTree(predictions, metric="euclidean")
+
+    def batch_generator_call(self, data_generator: Iterator):
+        counter = 0
+        while counter != 10:
+            try:
+                return list(next(data_generator))
+            except ValueError:
+                print("repeat batch generation...")
+                counter += 1
+        return list(next(data_generator))
 
     def loss_call(self, data_generator: Iterable, alpha: float, distance_metric: str):
         raise NotImplementedError
