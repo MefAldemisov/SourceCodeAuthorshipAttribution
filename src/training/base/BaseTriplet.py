@@ -123,6 +123,7 @@ class BaseTriplet:
                 loss = tf.reduce_mean(loss, axis=0)[0]
                 self.on_batch_end(loss, cbc, epoch, all_x, step)
             optimizer.lr = optimizer.lr * 0.9
+            step_start = 0
 
     def train(self,
               batch_size: int = 64,
