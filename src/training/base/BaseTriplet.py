@@ -94,10 +94,24 @@ class BaseTriplet:
                       optimizer: tf.keras.optimizers.Optimizer,
                       cbc: TrainingCallback,
                       alpha: float = 0.2,
-                      distance_metric: str = "euclidean"):
+                      distance_metric: str = "euclidean",
+                      epoch_start: int = 0,
+                      step_start: int = 0
+                      ):
+        if not (epoch_start == 0 and step_start == 0):
+            try:
+                self.Model.model = tf.keras.models.load_model("../outputs/{}_{}.h"
+                                                              .format(self.Model.name, epoch_start))
+            except:
+                try:
+                    self.Model.model = tf.keras.models.load_model("../outputs/{}_{}.h"
+                                                                  .format(self.Model.name, epoch_start - 1))
+                except:
+                    print("no restore file available, training restarted")
+                    epoch_start = 0
 
-        for epoch in range(epochs):
-            for step in tqdm.tqdm(range(steps_per_epoch)):
+        for epoch in range(epoch_start, epochs):
+            for step in tqdm.tqdm(range(step_start, steps_per_epoch)):
                 with tf.GradientTape() as tape:
                     loss = self.loss_call(data_generator, alpha, distance_metric)
                     # update gradient
@@ -114,7 +128,9 @@ class BaseTriplet:
               batch_size: int = 64,
               epochs: int = 100,
               distance_metric: str = "euclidean",
-              alpha: float = 0.1):
+              alpha: float = 0.1,
+              epoch_start: int = 0,
+              step_start: int = 0):
 
         X_train, x_test, y_train, y_test = self.Model.preprocess()
 
@@ -131,4 +147,5 @@ class BaseTriplet:
         self.training_loop(X_train, epochs, steps_per_epoch,
                            self.data_generator(X_train, y_train, batch_size),
                            optimizer, test_cb, alpha=alpha,
-                           distance_metric=distance_metric)
+                           distance_metric=distance_metric,
+                           epoch_start=epoch_start, step_start=step_start)
