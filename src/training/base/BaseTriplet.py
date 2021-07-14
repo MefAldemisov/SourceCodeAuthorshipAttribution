@@ -23,12 +23,14 @@ class BaseTriplet:
                                            n_positive: int,
                                            batch_size: int) -> Tuple[np.ndarray, np.ndarray]:
         y_anchor = y[anchor_index]
-        positive_indexes = np.where(y == y_anchor)[0][:n_positive]
+        positive_indexes = np.where(y == y_anchor)[0]
+        n_same = positive_indexes.shape[0]
+        positive_indexes = positive_indexes[:n_positive]
         k = batch_size - positive_indexes.shape[0]
 
         if self.index is not None:
             query = self.Model.model.predict(X[anchor_index])
-            query_res = self.index.query(query, 5*batch_size, return_distance=False)[0]
+            query_res = self.index.query(query, batch_size+n_same, return_distance=False)[0]
             negative_indexes = np.array([neighbour_index for neighbour_index in query_res
                                          if y[neighbour_index] != y_anchor])[:k]
         else:  # the first batch generation
@@ -75,13 +77,13 @@ class BaseTriplet:
         self.index = BallTree(predictions, metric="euclidean")
 
     def batch_generator_call(self, data_generator: Iterator):
-        counter = 0
-        while counter != 10:
-            try:
-                return list(next(data_generator))
-            except ValueError:
-                print("repeat batch generation...")
-                counter += 1
+        # counter = 0
+        # while counter != 10:
+        #     try:
+        #         return list(next(data_generator))
+        #     except ValueError:
+        #         print("repeat batch generation...")
+        #         counter += 1
         return list(next(data_generator))
 
     def loss_call(self, data_generator: Iterable, alpha: float, distance_metric: str):
