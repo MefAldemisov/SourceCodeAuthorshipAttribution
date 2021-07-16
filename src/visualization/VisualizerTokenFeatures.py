@@ -34,11 +34,11 @@ class VisualizerTokenFeatures(Visualizer):
                 local_impact = self.get_color(color_map, impact)
                 word = tokenizer.detokenize([[int(token)]]).to_list()[0][0].decode("utf-8")
                 # special tokens
-                if word == "^TAB^":
+                if word == "TAB":
                     word = "    "
-                elif word == "^SPC^":
+                elif word == "SPC":
                     word = " "
-                elif word == "^NLN^":
+                elif word == "NLN":
                     file.write("<br>")
                     continue
 

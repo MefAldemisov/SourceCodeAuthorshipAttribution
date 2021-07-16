@@ -23,7 +23,7 @@ class Visualizer:
         self.model_name = model_name
         self.snippet_index = snippet_index
 
-        self.model = tf.keras.models.load_model('../outputs/{}.h'.format(model_name))
+        self.model = tf.keras.models.load_model('../outputs/{}_0.h'.format(model_name))
         all_x, _, all_y, _ = data_loader.secondary_preprocess("../inputs/preprocessed_jsons/{}_train.json"
                                                               .format(model_name))
         self.triplet_type = AverageTriplet(self.model)

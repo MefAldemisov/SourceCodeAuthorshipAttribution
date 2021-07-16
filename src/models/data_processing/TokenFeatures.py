@@ -10,7 +10,7 @@ from models.data_processing.base.DataLoading import DataLoader
 
 bert_vocab_args = {
     "vocab_size": 80000,
-    "reserved_tokens": ["^TAB^", "^SPC^", "^NLN^"],
+    "reserved_tokens": ["TAB", "SPC", "NLN"],
     "bert_tokenizer_params": {},
     "learn_params": {},
 }
@@ -34,9 +34,9 @@ class TokenFeatures(DataLoader):
                 print(token, file=f)
 
     def _insert_tokens(self, x: str):
-        x = x.replace("\n", "^NLN^")
-        x = x.replace("\t", "^TAB^")
-        x = x.replace(" ", "^SPC^")
+        x = x.replace("\n", "NLN")
+        x = x.replace("\t", "TAB")
+        x = x.replace(" ", "SPC")
         return x
 
     def initial_preprocess(self, df_path: str, tmp_dataset_filename: str):
@@ -44,14 +44,14 @@ class TokenFeatures(DataLoader):
         df = df[(df.n_lines > 0)]
         # tokenize. requires time (approx 1h)
 
-        # df.flines = df.flines.apply(self._insert_tokens)
-        # text_dataset = tf.data.Dataset.from_tensor_slices(df.flines.values)
-        #
-        # vocab = bert_vocab.bert_vocab_from_dataset(
-        #     text_dataset,
-        #     **bert_vocab_args
-        # )
-        # self._write_vocab_file("../inputs/bert_tokens.model", vocab)
+        df.flines = df.flines.apply(self._insert_tokens)
+        text_dataset = tf.data.Dataset.from_tensor_slices(df.flines.values)
+
+        vocab = bert_vocab.bert_vocab_from_dataset(
+            text_dataset,
+            **bert_vocab_args
+        )
+        self._write_vocab_file("../inputs/bert_tokens.model", vocab)
         # read the tokenizer
         tokenizer = text.BertTokenizer("../inputs/bert_tokens.model")
 
