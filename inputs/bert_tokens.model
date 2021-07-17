@@ -1,6 +1,6 @@
-^TAB^
-^SPC^
-^NLN^
+TAB
+SPC
+NLN
 !
 "
 #
@@ -994,9 +994,6 @@ z
 ２
 ：
 ？
-SPC
-NLN
-TAB
 in
 for
 if

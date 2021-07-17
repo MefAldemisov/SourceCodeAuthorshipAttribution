@@ -34,9 +34,9 @@ class TokenFeatures(DataLoader):
                 print(token, file=f)
 
     def _insert_tokens(self, x: str):
-        x = x.replace("\n", "NLN")
-        x = x.replace("\t", "TAB")
-        x = x.replace(" ", "SPC")
+        x = x.replace("\n", " NLN ")
+        x = x.replace("\t", " TAB ")
+        x = x.replace(" ", " SPC ")
         return x
 
     def initial_preprocess(self, df_path: str, tmp_dataset_filename: str):
@@ -45,6 +45,7 @@ class TokenFeatures(DataLoader):
         # tokenize. requires time (approx 1h)
 
         df.flines = df.flines.apply(self._insert_tokens)
+        print("updated")
         text_dataset = tf.data.Dataset.from_tensor_slices(df.flines.values)
 
         vocab = bert_vocab.bert_vocab_from_dataset(
@@ -52,6 +53,7 @@ class TokenFeatures(DataLoader):
             **bert_vocab_args
         )
         self._write_vocab_file("../inputs/bert_tokens.model", vocab)
+        print("saved")
         # read the tokenizer
         tokenizer = text.BertTokenizer("../inputs/bert_tokens.model")
 

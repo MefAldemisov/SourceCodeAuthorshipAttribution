@@ -35,9 +35,9 @@ class VisualizerTokenFeatures(Visualizer):
                 word = tokenizer.detokenize([[int(token)]]).to_list()[0][0].decode("utf-8")
                 # special tokens
                 if word == "TAB":
-                    word = "    "
+                    word = "&emsp"
                 elif word == "SPC":
-                    word = " "
+                    word = "&nbsp"
                 elif word == "NLN":
                     file.write("<br>")
                     continue
