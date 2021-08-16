@@ -142,7 +142,8 @@ class BaseTriplet:
 
         test_cb = TrainingCallback(X_train, x_test, y_train, y_test, threshold=alpha,
                                    input_size=self.Model.input_size,
-                                   model_name=self.Model.name, authors=[23, 34, 39, 40, 53, 60])
+                                   model_name=self.Model.name)
+        # for initial dataset [23, 34, 39, 40, 53, 60]
 
         tensorboard = callbacks.TensorBoard(log_dir="../outputs/tensor_board", histogram_freq=1)
         tensorboard.set_model(self.Model.model)

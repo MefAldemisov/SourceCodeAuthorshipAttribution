@@ -11,9 +11,9 @@ if gpus:
     for gpu in gpus:
         tf.config.experimental.set_memory_growth(gpu, True)
 
-model = Embedding(input_size=800, crop=200, output_size=50, make_initial_preprocess=False)
+model = Embedding(input_size=800, crop=200, output_size=50, make_initial_preprocess=True)
 SingleTriplet(model=model).train(batch_size=16, epochs=40, epoch_start=0, step_start=0)
-VisualizerTokenFeatures().run()
+# VisualizerTokenFeatures().run()
 
 # model = Conv2D()
 # SingleTriplet(model=model).train(batch_size=16, epochs=1)

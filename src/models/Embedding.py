@@ -25,7 +25,7 @@ class Embedding(TokenFeatures, Model):
         self.model = self.create_model()
 
     def create_after_emb(self, reshape1,
-                         conv_channels=1,
+                         conv_channels=2,
                          emb_height=100,
                          activation="relu",
                          L2_lambda=0.02,
@@ -46,18 +46,13 @@ class Embedding(TokenFeatures, Model):
         norm0 = layers.LayerNormalization(axis=-1)(connect)
         drop1 = layers.Dropout(0.5)(norm0)
 
-        big_conv_channels = 2
-        big_convolution = layers.Conv2D(big_conv_channels, (4, emb_height),
-                                        padding="same", activation=activation,
-                                        name="main_conv2d_size_{}".format(4),
+        flatten = layers.Flatten()(drop1)
+        big_convolution = layers.Dense(500,  activation=activation,
                                         kernel_initializer=initializers.HeNormal(),
-                                        kernel_regularizer=regularizers.L2(L2_lambda),
-                                        input_shape=(1, self.crop, emb_height),
-                                        data_format="channels_last")(drop1)  # 100, 100, 4
+                                        kernel_regularizer=regularizers.L2(L2_lambda))(flatten)  # 100, 100, 4
 
-        reshape2 = layers.Reshape((-1, emb_height * big_conv_channels))(big_convolution)
-        flatten = layers.Flatten()(reshape2)
-        norm1 = layers.LayerNormalization(axis=-1)(flatten)
+        # reshape2 = layers.Reshape((-1, emb_height * big_conv_channels))(big_convolution)
+        norm1 = layers.LayerNormalization(axis=-1)(big_convolution)
         drop2 = layers.Dropout(0.5)(norm1)
         dense = layers.Dense(self.output_size, activation=activation,
                              kernel_initializer=initializers.HeNormal())(drop2)
@@ -69,7 +64,7 @@ class Embedding(TokenFeatures, Model):
                      conv_sizes: List[int] = [2, 4, 16],
                      emb_height: int = 100):
 
-        conv_channels = 1
+        conv_channels = 2
         input_layer = layers.Input(shape=(self.crop, 1))
 
         embeddings = layers.Embedding(self.max_val, emb_height,

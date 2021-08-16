@@ -42,8 +42,8 @@ class DataLoader:
         :return: dataset, pandas dataframe
         """
         df = pd.read_csv(df_path)
-        df = df.drop(columns=["round", "task", "solution", "file",
-                              "full_path", "Unnamed: 0.1", "Unnamed: 0", "lang"])
+        # df = df.drop(columns=["round", "task", "solution", "file",
+        #                       "full_path", "Unnamed: 0.1", "Unnamed: 0", "lang"])
         df["n_lines"] = df.flines.apply(lambda x: str(x).count("\n"))
         return df
 
@@ -61,10 +61,10 @@ class DataLoader:
         :param length: number of authors to be selected
         :return: reduced and modified dataset
         """
-        users = df.username.value_counts()[start_index:start_index+length].index
-        df = df[df.username.isin(users)]
+        users = df.user.value_counts()[start_index:start_index+length].index
+        df = df[df.user.isin(users)]
         le = LabelEncoder()
-        df.username = le.fit_transform(df.username)
+        df.user = le.fit_transform(df.user)
         return df
 
     def _crop_to(self,
@@ -87,7 +87,7 @@ class DataLoader:
         return new_X, new_y
 
     def preprocess(self,
-                   df_path: str = "../inputs/processed_dfs/py_df.csv",
+                   df_path: str = "../inputs/processed_dfs/python_9_tasks_2016.csv",
                    tmp_dataset_dir: str = "../inputs/preprocessed_jsons/") -> Tuple[np.ndarray, np.ndarray,
                                                                                     np.ndarray, np.ndarray]:
         """

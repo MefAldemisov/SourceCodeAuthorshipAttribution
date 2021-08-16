@@ -4,7 +4,7 @@ import pandas as pd
 import tensorflow_text as text
 from typing import List
 from tensorflow_text.tools.wordpiece_vocab import bert_vocab_from_dataset as bert_vocab
-from sklearn.model_selection import train_test_split
+# from sklearn.model_selection import train_test_split
 from models.data_processing.base.DataLoading import DataLoader
 
 
@@ -33,7 +33,8 @@ class TokenFeatures(DataLoader):
             for token in vocab:
                 print(token, file=f)
 
-    def _insert_tokens(self, x: str):
+    @staticmethod
+    def _insert_tokens(x: str):
         x = x.replace("\n", " NLN ")
         x = x.replace("\t", " TAB ")
         x = x.replace(" ", " SPC ")
@@ -78,7 +79,7 @@ class TokenFeatures(DataLoader):
         df["tokens"] = df.flines.apply(lambda x: tokenizer.tokenize(x).to_list())
 
         df.tokens = df.tokens.apply(lambda x: list(pd.core.common.flatten(x)))
-        dataset = df[["username", "tokens"]]
+        dataset = df[["user", "tokens", "task"]]
         # shuffle dataset
         dataset = dataset.sample(frac=1)
 
@@ -97,9 +98,15 @@ class TokenFeatures(DataLoader):
         X = np.array([np.array(x).reshape(self.input_size, 1).tolist() for x in X])
         X = X.reshape((-1, self.input_size))
 
-        y = np.array(dataset.username)
-        X, y = self._crop_to(X, y, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
+        y = np.array(dataset.user)
+        tasks = np.array(dataset.task)
+        train_indexes = np.where(tasks < 7)[0]
+        test_indexes = np.where(tasks >= 7)[0]
+        X_train, X_test = X[train_indexes], X[test_indexes]
+        y_train, y_test = y[train_indexes], y[test_indexes]
+
+        X_train, y_train = self._crop_to(X_train, y_train, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
+        X_test, y_test = self._crop_to(X_test, y_test, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
         self.input_size = self.crop
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
         return X_train, X_test, y_train, y_test
