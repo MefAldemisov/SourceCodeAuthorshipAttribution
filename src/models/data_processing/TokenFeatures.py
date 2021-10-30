@@ -105,8 +105,8 @@ class TokenFeatures(DataLoader):
         X_train, X_test = X[train_indexes], X[test_indexes]
         y_train, y_test = y[train_indexes], y[test_indexes]
 
-        X_train, y_train = self._crop_to(X_train, y_train, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
-        X_test, y_test = self._crop_to(X_test, y_test, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
-        self.input_size = self.crop
+        # X_train, y_train = self._crop_to(X_train, y_train, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
+        # X_test, y_test = self._crop_to(X_test, y_test, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
+        # self.input_size = self.crop
 
         return X_train, X_test, y_train, y_test

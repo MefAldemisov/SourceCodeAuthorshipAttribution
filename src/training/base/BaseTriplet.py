@@ -138,7 +138,7 @@ class BaseTriplet:
         X_train, x_test, y_train, y_test = self.Model.preprocess()
 
         steps_per_epoch = int(X_train.shape[0] / batch_size)
-        optimizer = optimizers.Adam(0.0001)
+        optimizer = optimizers.Adam(0.001)
 
         test_cb = TrainingCallback(X_train, x_test, y_train, y_test, threshold=alpha,
                                    input_size=self.Model.input_size,

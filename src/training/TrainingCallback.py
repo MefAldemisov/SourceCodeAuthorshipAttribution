@@ -34,7 +34,7 @@ class TrainingCallback:
         self.threshold = threshold
         self.input_size = input_size
         # creation of summary-writer
-        current_time = datetime.datetime.now().strftime("%Y>%m>%d-%H>%M>%S")
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = "../outputs/tensor_board/{}/test".format(current_time)
         train_log_dir = "../outputs/tensor_board/{}/train".format(current_time)
         self.test_summary_writer = tf.summary.create_file_writer(test_log_dir)

@@ -13,7 +13,7 @@ from models.Embedding import Embedding
 class VisualizerTokenFeatures(Visualizer):
     def __init__(self):
         data_loader = TokenFeatures(name="embedding", make_initial_preprocess=False,
-                                    input_size=800, crop=200)
+                                    input_size=800, crop=800)
         super().__init__(model_name="embedding",
                          data_loader=data_loader,
                          snippet_index=0)
@@ -35,7 +35,7 @@ class VisualizerTokenFeatures(Visualizer):
                 word = tokenizer.detokenize([[int(token)]]).to_list()[0][0].decode("utf-8")
                 # special tokens
                 if word == "TAB":
-                    word = "&emsp"
+                    word = "&nbsp&nbsp&nbsp&nbsp"
                 elif word == "SPC":
                     word = "&nbsp"
                 elif word == "NLN":
@@ -69,10 +69,10 @@ class VisualizerTokenFeatures(Visualizer):
         with open("../outputs/text_{}.html".format(self.model_name), "w") as file:
             file.write("<main style='word-wrap: break-word;'>")
 
-        snippet_length = 200  # initially 600
+        snippet_length = 800  # initially 600
 
         input_layer = tf.keras.layers.Input((snippet_length, 100, 1))
-        output = Embedding().create_after_emb(input_layer)
+        output = Embedding(input_size=800, crop=800, output_size=50, make_initial_preprocess=False).create_after_emb(input_layer)
         clean_model = tf.keras.models.Model(input_layer, output)
 
         heatmap = self.get_heatmap(target_shape=(-1, snippet_length), clean_model=clean_model, layers_to_cut=3)

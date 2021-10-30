@@ -22,11 +22,11 @@ class Conv2D(CharFeatures, Model):
         self.model = self.create_model()
 
     def create_after_emb(self, reshape1,
-                         conv_channels=1,
+                         conv_channels=32,
                          emb_height=100,
                          activation="relu",
                          L2_lambda=0.02,
-                         conv_sizes=[4, 8, 16]):
+                         conv_sizes=[2, 3, 5, 7]):
         conv3d = layers.Conv3D(1, (4, 4, 10), padding="same",
                                activation=activation, kernel_regularizer=regularizers.L2(L2_lambda),
                                data_format="channels_last")(reshape1)
@@ -67,7 +67,7 @@ class Conv2D(CharFeatures, Model):
         rs2 = layers.Reshape((self.crop, self.img_x, emb_height, 1))(embedding)
 
         # parallelism
-        dense = self.create_after_emb(rs2, conv_channels=1)
+        dense = self.create_after_emb(rs2)
 
         result = keras.models.Model(input_layer, dense)
         keras.utils.plot_model(result, "{}.png".format(self.name), show_shapes=True)
