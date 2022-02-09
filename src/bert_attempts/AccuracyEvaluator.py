@@ -13,7 +13,7 @@ class AccuracyEvaluator:
 
     def __init__(self,
                  # X_train: np.ndarray,
-                 X_test: np.ndarray,
+                 X_test,
                  # y_train: np.ndarray,
                  y_test: np.ndarray,
                  threshold: float = 0.1,
@@ -37,7 +37,8 @@ class AccuracyEvaluator:
 
         def select_authors(initial_x, initial_y):
             index = np.where(np.isin(initial_y, self.authors))[0]
-            new_x, new_y = map(lambda a: a[index], [initial_x, initial_y])
+            new_x = [initial_x[i] for i in index]
+            new_y = initial_y[index]
             return new_x, new_y
 
         # simple_x_train, simple_y_train = select_authors(X_train, y_train)
@@ -89,13 +90,13 @@ class AccuracyEvaluator:
 
     def get_acc(self,
                 model,
-                x: np.ndarray,
+                x,
                 y: np.ndarray,
                 epoch: int,
                 is_test: bool,
                 dim_red: True) -> float:
-
-        transformed_x = model(x)
+        with torch.no_grad():
+            transformed_x = model(torch.cat(x))
         knn = KNeighborsClassifier().fit(transformed_x, y)
         predictions = knn.predict(transformed_x)
         accuracy = accuracy_score(y_true=y, y_pred=predictions)

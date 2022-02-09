@@ -8,7 +8,6 @@ import torch.optim as optim
 from AccuracyEvaluator import AccuracyEvaluator
 from sklearn.neighbors import BallTree
 from sklearn.preprocessing import LabelEncoder
-
 # with reference to https://www.kaggle.com/hirotaka0122/triplet-loss-with-pytorch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -21,58 +20,90 @@ df_path = '../../inputs/processed_dfs/cpp_9_tasks_2016.csv'
 tmp_dataset_dir = "../../inputs/preprocessed_jsons/"
 tmp_dataset_filename = tmp_dataset_dir + 'bert' + "_train.json"
 
-INPUT_SIZE = 512 # 514 tokens, maximum for bert
+INPUT_SIZE = 512  # 514 tokens, maximum for bert
 OUTPUT_SIZE = 256
 N_EPOCHS = 100
 BATCH_SIZE = 16
 
 # -------------------------- load data
-df = pd.read_csv(df_path)
-# df = df.drop(columns=["round", "task", "solution", "file",
-#                       "full_path", "Unnamed: 0.1", "Unnamed: 0", "lang"])
-# df["n_lines"] = df.flines.apply(lambda x: str(x).count("\n"))
-# df = df[(df.n_lines > 0)]
 
 
-def _insert_tokens(x: str):
-    x = x.replace("\n", " NLN ")
-    x = x.replace("\t", " TAB ")
-    x = x.replace(" ", " SPC ")
-    return x
+def generate_data():
+    df = pd.read_csv(df_path)
+    # df = df.drop(columns=["round", "task", "solution", "file",
+    #                       "full_path", "Unnamed: 0.1", "Unnamed: 0", "lang"])
+    # df["n_lines"] = df.flines.apply(lambda x: str(x).count("\n"))
+    # df = df[(df.n_lines > 0)]
 
-df.flines = df.flines.apply(_insert_tokens)
 
-# load tokenizer
-tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base-mlm")
-df.index = np.arange(len(df))
-le = LabelEncoder()
-df.user = le.fit_transform(df.user)
-df['tokens'] = df.flines.apply(lambda x:
-                              tokenizer.convert_tokens_to_ids(
-                                  tokenizer.tokenize(x)))
+    # def _insert_tokens(x: str):
+    #     x = x.replace("\n", " NLN ")
+    #     x = x.replace("\t", " TAB ")
+    #     x = x.replace(" ", " SPC ")
+    #     return x
+    #
+    # df.flines = df.flines.apply(_insert_tokens)
 
-dataset = df[["user", "tokens", "task"]]
-# shuffle dataset
-dataset = dataset.sample(frac=1)
+    # load tokenizer
+    tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base-mlm")
+    df.index = np.arange(len(df))
+    le = LabelEncoder()
+    df.user = le.fit_transform(df.user)
+    df['tokens'] = df.flines.apply(lambda x:
+                                  tokenizer.convert_tokens_to_ids(
+                                      tokenizer.tokenize(x)))
 
-X = dataset.tokens.values
+    dataset = df[["user", "tokens", "task"]]
+    # shuffle dataset
+    dataset = dataset.sample(frac=1)
 
-def fillZeros(arr):
-    arr = np.array(arr)
-    if INPUT_SIZE > arr.shape[0]:
-        arr = np.pad(arr, (0, INPUT_SIZE - arr.shape[0]), 'constant')
-    else:
-        arr = arr[:INPUT_SIZE]
-    return arr.reshape(INPUT_SIZE, 1).tolist()
+    X = dataset.tokens.values
 
-X = np.array([fillZeros(x) for x in X])
-X = X.reshape((-1, INPUT_SIZE))
-y = np.array(dataset.user)
-tasks = np.array(dataset.task)
-train_indexes = np.where(tasks < 7)[0]
-test_indexes = np.where(tasks >= 7)[0]
-X_train, X_test = X[train_indexes], X[test_indexes]
-y_train, y_test = y[train_indexes], y[test_indexes] # 244 unique person
+    def fillZeros(arr):
+        arr = np.array(arr)
+        if INPUT_SIZE > arr.shape[0]:
+            arr = np.pad(arr, (0, INPUT_SIZE - arr.shape[0]), 'constant')
+        else:
+            arr = arr[:INPUT_SIZE]
+        return arr.reshape(INPUT_SIZE, 1).tolist()
+
+    X = np.array([fillZeros(x) for x in X])
+    X = X.reshape((-1, INPUT_SIZE))
+    y = np.array(dataset.user)
+    tasks = np.array(dataset.task)
+    train_indexes = np.where(tasks < 7)[0]
+    test_indexes = np.where(tasks >= 7)[0]
+    X_train, X_test = X[train_indexes], X[test_indexes]
+    y_train, y_test = y[train_indexes], y[test_indexes] # 244 unique person
+
+    embedding_model = RobertaModel.from_pretrained("microsoft/codebert-base")
+
+    x_emb = []
+    with torch.no_grad():
+        for i in tqdm.tqdm(range(0, X_test.shape[0], BATCH_SIZE)):
+            xs = X_train[i: i+BATCH_SIZE]
+            new_xs = embedding_model(torch.from_numpy(xs)).last_hidden_state
+            x_emb = [*x_emb, *new_xs]
+
+    # save x_emb, x_train, y_test, y_train
+
+    np.save('x_train.np', X_train)
+    np.save('y_test.np', y_test)
+    np.save('y_train.np', y_train)
+    np.save('x_test.np', X_test)
+
+    for idx, tensor in enumerate(x_emb):
+        torch.save(tensor, f"test_tensors/tensor{idx}.pt")
+
+
+# generate_data()
+print('restoring')
+
+X_train = np.load('x_train.np.npy')
+y_test = np.load('y_test.np.npy')
+y_train = np.load('y_train.np.npy')
+X_test = np.load('x_test.np.npy')
+x_emb = [torch.load(f"test_tensors/tensor{idx}.pt") for idx in range(X_test.shape[0])]
 
 # -------------------------- model architecture
 
@@ -95,7 +126,7 @@ class GCJ:
     def batch_generator(self, model, tree):
         n_positive = self.batch_size // 2
         anchor_index = np.random.choice(self.y.shape[0], 1)
-        y_anchor = y[anchor_index]
+        y_anchor = self.y[anchor_index]
         positive_indexes = np.where(self.y == y_anchor)[0]
         n_same = positive_indexes.shape[0]
         positive_indexes = positive_indexes[:n_positive]
@@ -193,20 +224,6 @@ tree = None # default value
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = torch.jit.script(TripletLoss())
 
-
-# test_emb = embedding_model(torch.from_numpy(X_test)).last_hidden_state
-x_emb = []
-for i in tqdm.tqdm(range(0, X_test.shape[0], BATCH_SIZE)):
-    xs = X_train[i: i+BATCH_SIZE]
-    new_xs = embedding_model(torch.from_numpy(xs)).last_hidden_state
-    x_emb = [*x_emb, *new_xs]
-
-x_emb = np.array(x_emb)
-# Connected to pydev debugger (build 213.5744.248)
-#  16%|█▌        | 5/31 [03:37<18:48, 43.42s/it]/usr/local/Cellar/python@3.9/3.9.7/Frameworks/Python.framework/Versions/3.9/lib/python3.9/multiprocessing/resource_tracker.py:216: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
-#   warnings.warn('resource_tracker: There appear to be %d '
-#
-# Process finished with exit code 137 (interrupted by signal 9: SIGKILL)
 callback = AccuracyEvaluator(x_emb, y_test, input_size=768)
 
 # training loop
@@ -215,9 +232,10 @@ for epoch in tqdm.tqdm(range(N_EPOCHS), desc="Epochs"):
     running_loss = []
     for step in enumerate(tqdm.tqdm(range(len(np.unique(y_train))), desc="Training", leave=False)):
         anchor, positive, negative = data_loader.batch_generator(model, tree)
-        anchor = embedding_model(anchor).last_hidden_state
-        positive = embedding_model(positive).last_hidden_state
-        negative = embedding_model(negative).last_hidden_state
+        with torch.no_grad():
+            anchor = embedding_model(torch.from_numpy(anchor)).last_hidden_state
+            positive = embedding_model(torch.from_numpy(positive)).last_hidden_state
+            negative = embedding_model(torch.from_numpy(negative)).last_hidden_state
 
         optimizer.zero_grad()
 
