@@ -85,6 +85,12 @@ def generate_data():
             new_xs = embedding_model(torch.from_numpy(xs)).last_hidden_state
             x_emb = [*x_emb, *new_xs]
 
+    x_train_emb = []
+    with torch.no_grad():
+        for i in tqdm.tqdm(range(0, X_train.shape[0], BATCH_SIZE)):
+            xs = X_train[i: i+BATCH_SIZE]
+            new_xs = embedding_model(torch.from_numpy(xs)).last_hidden_state
+            x_train_emb = [*x_train_emb, *new_xs]
     # save x_emb, x_train, y_test, y_train
 
     np.save('x_train.np', X_train)
@@ -95,8 +101,12 @@ def generate_data():
     for idx, tensor in enumerate(x_emb):
         torch.save(tensor, f"test_tensors/tensor{idx}.pt")
 
+    for idx, tensor in enumerate(x_train_emb):
+        torch.save(tensor, f"train_tensors/tensor{idx}.pt")
 
-# generate_data()
+
+
+generate_data()
 print('restoring')
 
 X_train = np.load('x_train.np.npy')
@@ -104,6 +114,7 @@ y_test = np.load('y_test.np.npy')
 y_train = np.load('y_train.np.npy')
 X_test = np.load('x_test.np.npy')
 x_emb = [torch.load(f"test_tensors/tensor{idx}.pt") for idx in range(X_test.shape[0])]
+x_train_emb = [torch.load(f"train_tensors/tensor{idx}.pt") for idx in range(X_test.shape[0])]
 
 # -------------------------- model architecture
 
@@ -224,8 +235,9 @@ tree = None # default value
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = torch.jit.script(TripletLoss())
 
-callback = AccuracyEvaluator(x_emb, y_test, input_size=768)
+callback = AccuracyEvaluator(x_train_emb, x_emb, y_train, y_test, input_size=768)
 
+x_train_emb = torch.cat(x_train_emb)
 # training loop
 model.train()
 for epoch in tqdm.tqdm(range(N_EPOCHS), desc="Epochs"):
@@ -247,8 +259,9 @@ for epoch in tqdm.tqdm(range(N_EPOCHS), desc="Epochs"):
         loss.backward()
         optimizer.step()
 
-        # predictions = model(x_emb)
-        # tree = BallTree(predictions, metric="euclidean")
+        with torch.no_grad():
+            predictions = model(x_train_emb)
+        tree = BallTree(predictions, metric="euclidean")
 
         current_loss = loss.cpu().detach().numpy()
         print(current_loss)

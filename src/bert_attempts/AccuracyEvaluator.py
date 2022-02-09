@@ -12,9 +12,9 @@ from sklearn.neighbors import KNeighborsClassifier
 class AccuracyEvaluator:
 
     def __init__(self,
-                 # X_train: np.ndarray,
+                 X_train,
                  X_test,
-                 # y_train: np.ndarray,
+                 y_train: np.ndarray,
                  y_test: np.ndarray,
                  threshold: float = 0.1,
                  input_size: int = 500,
@@ -37,20 +37,23 @@ class AccuracyEvaluator:
 
         def select_authors(initial_x, initial_y):
             index = np.where(np.isin(initial_y, self.authors))[0]
-            new_x = [initial_x[i] for i in index]
+            new_x = initial_x[index]
             new_y = initial_y[index]
             return new_x, new_y
 
-        # simple_x_train, simple_y_train = select_authors(X_train, y_train)
+        X_test = torch.cat(X_test)
+        X_train = torch.cat(X_train)
+
+        simple_x_train, simple_y_train = select_authors(X_train, y_train)
         simple_x_test, simple_y_test = select_authors(X_test, y_test)
 
         self.data = {
             "simple": {
-                # "train": [simple_x_train, simple_y_train],
+                "train": [simple_x_train, simple_y_train],
                 "test": [simple_x_test, simple_y_test]
             },
             "full": {
-                # "train": [X_train, y_train],
+                "train": [X_train, y_train],
                 "test": [X_test, y_test]
             }
         }
@@ -67,7 +70,7 @@ class AccuracyEvaluator:
         buf.seek(0)
 
     def apply_dimensionality_reduction(self,
-                                       transformed_x: np.ndarray,
+                                       transformed_x,
                                        y: np.ndarray,
                                        epoch: int,
                                        is_test: bool):
@@ -100,8 +103,8 @@ class AccuracyEvaluator:
         knn = KNeighborsClassifier().fit(transformed_x, y)
         predictions = knn.predict(transformed_x)
         accuracy = accuracy_score(y_true=y, y_pred=predictions)
-        # if dim_red:
-        #     self.apply_dimensionality_reduction(transformed_x, y, epoch, is_test)
+        if dim_red:
+            self.apply_dimensionality_reduction(transformed_x, y, epoch, is_test)
         return accuracy
 
     def _writer(self,
@@ -120,10 +123,10 @@ class AccuracyEvaluator:
                      epoch: int,
                      loss: float):
 
-        # astr = self._writer(*self.data["simple"]["train"], model, epoch, False, True)
+        astr = self._writer(*self.data["simple"]["train"], model, epoch, False, True)
         aste = self._writer(*self.data["simple"]["test"], model, epoch, True, True)
         afte = self._writer(*self.data["full"]["test"], model, epoch, True, False)
 
-        print(loss, aste, afte)
+        print(loss,astr, aste, afte)
         self.n += 1
-        return aste, afte
+        return astr, aste, afte
