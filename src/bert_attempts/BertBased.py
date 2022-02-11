@@ -22,7 +22,7 @@ tmp_dataset_filename = tmp_dataset_dir + 'bert' + "_train.json"
 
 INPUT_SIZE = 512  # 514 tokens, maximum for bert
 OUTPUT_SIZE = 256
-N_EPOCHS = 100
+N_EPOCHS = 30
 BATCH_SIZE = 16
 
 # -------------------------- load data
@@ -85,6 +85,12 @@ def generate_data():
             new_xs = embedding_model(torch.from_numpy(xs)).last_hidden_state
             x_emb = [*x_emb, *new_xs]
 
+    np.save('x_train.np', X_train)
+    np.save('y_test.np', y_test)
+    np.save('y_train.np', y_train)
+    np.save('x_test.np', X_test)
+    torch.save(torch.cat(x_emb), 'test_tensor.pt')
+    print("main part saved")
     x_train_emb = []
     with torch.no_grad():
         for i in tqdm.tqdm(range(0, X_train.shape[0], BATCH_SIZE)):
@@ -93,28 +99,19 @@ def generate_data():
             x_train_emb = [*x_train_emb, *new_xs]
     # save x_emb, x_train, y_test, y_train
 
-    np.save('x_train.np', X_train)
-    np.save('y_test.np', y_test)
-    np.save('y_train.np', y_train)
-    np.save('x_test.np', X_test)
+    torch.save(torch.cat(x_train_emb), 'train_tensor.pt')
 
-    for idx, tensor in enumerate(x_emb):
-        torch.save(tensor, f"test_tensors/tensor{idx}.pt")
-
-    for idx, tensor in enumerate(x_train_emb):
-        torch.save(tensor, f"train_tensors/tensor{idx}.pt")
-
-
-
-generate_data()
+# generate_data()
 print('restoring')
 
 X_train = np.load('x_train.np.npy')
 y_test = np.load('y_test.np.npy')
 y_train = np.load('y_train.np.npy')
 X_test = np.load('x_test.np.npy')
-x_emb = [torch.load(f"test_tensors/tensor{idx}.pt") for idx in range(X_test.shape[0])]
-x_train_emb = [torch.load(f"train_tensors/tensor{idx}.pt") for idx in range(X_test.shape[0])]
+x_emb = torch.load('test_tensor.pt')
+x_train_emb = torch.load('train_tensor.pt')
+x_emb = torch.reshape(x_emb, (-1, 512, 768))
+x_train_emb = torch.reshape(x_train_emb, (-1, 512, 768))
 
 # -------------------------- model architecture
 
@@ -144,7 +141,8 @@ class GCJ:
         k = self.batch_size - positive_indexes.shape[0]
 
         if tree is not None:
-            query = model(self.x[anchor_index])
+            with torch.no_grad():
+                query = model(self.x[anchor_index])
             query_res = tree.query(query, self.batch_size+n_same, return_distance=False)[0]
             negative_indexes = np.array([neighbour_index for neighbour_index in query_res
                                          if self.y[neighbour_index] != y_anchor])[:k]
@@ -153,13 +151,13 @@ class GCJ:
             np.random.shuffle(negative_indexes)
             negative_indexes = negative_indexes[:k]
 
-        local_x = self.x.reshape((-1, INPUT_SIZE))
+        local_x = self.x.reshape((-1, INPUT_SIZE, 768))
 
         reduced_indexes = map(lambda indexes: np.random.choice(indexes, self.batch_size),
                               [positive_indexes, negative_indexes])
 
         positive, negative = map(lambda i: local_x[i], reduced_indexes)
-        anchor = np.array([local_x[anchor_index] for _ in range(self.batch_size)]).reshape((-1, INPUT_SIZE))
+        anchor = torch.concat([local_x[anchor_index] for _ in range(self.batch_size)])
 
         return anchor, positive, negative
 
@@ -180,12 +178,14 @@ class Network(nn.Module):
         self.conv = nn.Sequential(
                 nn.Conv2d(1, self.channels, kernel_size=(k_size, 768),),
                 nn.ReLU(),
+                nn.Dropout(0.3)
             )
         #     for size in conv_sizes
         # ]
         self.fc = nn.Sequential(
             nn.Linear(self.pool_size*self.channels, INPUT_SIZE),
             nn.ReLU(),
+            nn.Dropout(0.3),
             nn.Linear(INPUT_SIZE, OUTPUT_SIZE),
             nn.ReLU()
         )
@@ -202,6 +202,8 @@ class Network(nn.Module):
 #
 
 # configs
+
+
 class TripletLoss(nn.Module):
     def __init__(self, margin=1.0):
         super(TripletLoss, self).__init__()
@@ -217,12 +219,13 @@ class TripletLoss(nn.Module):
 
         return losses.mean()
 
+
 def init_weights(m):
     if isinstance(m, nn.Conv2d):
         torch.nn.init.xavier_normal_(m.weight)
 
 
-data_loader = GCJ(X_train, y_train)
+data_loader = GCJ(x_train_emb, y_train)
 
 embedding_model = RobertaModel.from_pretrained("microsoft/codebert-base")
 
@@ -234,20 +237,19 @@ tree = None # default value
 
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = torch.jit.script(TripletLoss())
-
+x_emb = x_emb[:X_test.shape[0]]
 callback = AccuracyEvaluator(x_train_emb, x_emb, y_train, y_test, input_size=768)
 
-x_train_emb = torch.cat(x_train_emb)
 # training loop
 model.train()
 for epoch in tqdm.tqdm(range(N_EPOCHS), desc="Epochs"):
     running_loss = []
     for step in enumerate(tqdm.tqdm(range(len(np.unique(y_train))), desc="Training", leave=False)):
         anchor, positive, negative = data_loader.batch_generator(model, tree)
-        with torch.no_grad():
-            anchor = embedding_model(torch.from_numpy(anchor)).last_hidden_state
-            positive = embedding_model(torch.from_numpy(positive)).last_hidden_state
-            negative = embedding_model(torch.from_numpy(negative)).last_hidden_state
+        # with torch.no_grad():
+        #     anchor = embedding_model(anchor).last_hidden_state
+        #     positive = embedding_model(positive).last_hidden_state
+        #     negative = embedding_model(negative).last_hidden_state
 
         optimizer.zero_grad()
 

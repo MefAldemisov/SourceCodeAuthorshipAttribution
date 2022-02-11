@@ -41,9 +41,6 @@ class AccuracyEvaluator:
             new_y = initial_y[index]
             return new_x, new_y
 
-        X_test = torch.cat(X_test)
-        X_train = torch.cat(X_train)
-
         simple_x_train, simple_y_train = select_authors(X_train, y_train)
         simple_x_test, simple_y_test = select_authors(X_test, y_test)
 
@@ -82,7 +79,7 @@ class AccuracyEvaluator:
             indexes = np.where(y == developer)[0]
             plt.plot(x_pca[indexes, 0], x_pca[indexes, 1], "o", ms=5)
         # save as file
-        plt.savefig("../outputs/tsne_{}/tsne_{}.png".format('bert', self.n))
+        plt.savefig("outputs/tsne_{}.png".format( self.n))
         # log to tensorboard
         # image = self._plot_to_image(figure)
         # writer = self.test_summary_writer if is_test else self.train_summary_writer
@@ -99,7 +96,7 @@ class AccuracyEvaluator:
                 is_test: bool,
                 dim_red: True) -> float:
         with torch.no_grad():
-            transformed_x = model(torch.cat(x))
+            transformed_x = model(x)
         knn = KNeighborsClassifier().fit(transformed_x, y)
         predictions = knn.predict(transformed_x)
         accuracy = accuracy_score(y_true=y, y_pred=predictions)
@@ -123,8 +120,8 @@ class AccuracyEvaluator:
                      epoch: int,
                      loss: float):
 
-        astr = self._writer(*self.data["simple"]["train"], model, epoch, False, True)
         aste = self._writer(*self.data["simple"]["test"], model, epoch, True, True)
+        astr = self._writer(*self.data["simple"]["train"], model, epoch, False, True)
         afte = self._writer(*self.data["full"]["test"], model, epoch, True, False)
 
         print(loss,astr, aste, afte)
