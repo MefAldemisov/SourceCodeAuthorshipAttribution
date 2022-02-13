@@ -1,5 +1,6 @@
 import tqdm
 import torch
+import pickle
 
 import numpy as np
 import torch.nn as nn
@@ -63,7 +64,7 @@ model.train()
 params = []
 for epoch in tqdm.tqdm(range(N_EPOCHS), desc="Epochs"):
     running_loss = []
-    for step in enumerate(tqdm.tqdm(range(len(np.unique(y_train))), desc="Training", leave=False)):
+    for step in tqdm.tqdm(range(np.unique(y_train).shape[0]), desc="Training", leave=False):
         anchor, positive, negative = data_loader.batch_generator(model, tree)
 
         optimizer.zero_grad()
@@ -76,16 +77,21 @@ for epoch in tqdm.tqdm(range(N_EPOCHS), desc="Epochs"):
         loss.backward()
         optimizer.step()
 
-        with torch.no_grad():
-            predictions = model(x_train_emb)
-        tree = BallTree(predictions, metric="euclidean")
+        if (step % 10 == 0):
+            with torch.no_grad():
+                predictions = model(x_train_emb)
+            tree = BallTree(predictions, metric="euclidean")
 
-        current_loss = loss.cpu().detach().numpy()
-        running_loss.append(current_loss)
+            current_loss = loss.cpu().detach().numpy()
+            running_loss.append(current_loss)
 
-        # callback (accuracy)
-        metrics = callback.on_epoch_end(model, epoch, current_loss)
-        print(metrics)
-        params.append(metrics)
+            # callback (accuracy)
+            metrics = callback.on_epoch_end(model, epoch, current_loss)
+            print(metrics)
+            params.append(metrics)
+            with open('training.pkl', 'wb'):
+                pickle.dump(params)
+
+        torch.save(model.state_dict(), 'model')
 
     print("Epoch: {}/{} - Loss: {:.4f}".format(epoch + 1, N_EPOCHS, np.mean(running_loss)))
