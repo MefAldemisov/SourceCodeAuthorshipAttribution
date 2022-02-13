@@ -5,9 +5,9 @@
 - [x] ! add loss savings
 - [x] ! limit the number of tests evaluations => speed-up the training
 - [x] split the file on separate classes
-- [ ] !! change model to one in `Embedding.py` (regularization, parallel evaluation)
-- [ ] debug
-- [ ] separate data from code
+- [x] !! change model to one in `Embedding.py` (regularization, parallel evaluation)
+- [x] debug
+- [x] separate data from code
 
 ## Execution:
 1. Start file - `BertBased.py`

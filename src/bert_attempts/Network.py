@@ -8,17 +8,24 @@ class Network(nn.Module):
 
         self.input_size = input_size
         self.output_size = output_size
-        # conv_sizes = [2, 4, 16]
-        k_size = 8
-        self.pool_size = self.input_size - k_size + 1  # output for conv
-        self.channels = 4
-        self.conv = nn.Sequential(
-                nn.Conv2d(1, self.channels, kernel_size=(k_size, 768),),
-                nn.ReLU(),
-                nn.Dropout(0.3)
-            )
-        #     for size in conv_sizes
+        self.conv_sizes = [2, 4, 16]
+        self.pool_size = sum([self.input_size - size + 1 for size in self.conv_sizes])  # output for conv
+        self.channels = 2
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(1, self.channels, kernel_size=(2, 768),),
+            nn.ReLU(),
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(1, self.channels, kernel_size=(4, 768),),
+            nn.ReLU(),
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(1, self.channels, kernel_size=(16, 768),),
+            nn.ReLU(),
+        )
+
         self.fc = nn.Sequential(
+            nn.Dropout(0.5),
             nn.Linear(self.pool_size*self.channels, self.input_size),
             nn.ReLU(),
             nn.Dropout(0.3),
@@ -29,7 +36,9 @@ class Network(nn.Module):
     def forward(self, x):
         # array = [conv(x) for conv in self.conv]
         x = torch.reshape(x, (-1, 1, self.input_size, 768))
-        x = self.conv(x)
+
+        # torch.view(-1, self.channels * self.input_size - size + 1)
+        x = torch.cat([self.conv1(x), self.conv2(x), self.conv3(x)])
         x = x.view(-1, self.channels*self.pool_size)
         # x = torch.concat(array, dim=1)
         x = self.fc(x)

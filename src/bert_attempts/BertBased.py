@@ -1,3 +1,4 @@
+import os
 import tqdm
 import torch
 import pickle
@@ -22,23 +23,21 @@ if device.type == "cuda":
 
 # -------------------------- constants
 df_path = '../../inputs/processed_dfs/cpp_9_tasks_2016.csv'
+DATA_PATH = './data/'
+TRAIN_PATH = './train/'
 
 INPUT_SIZE = 512  # 514 tokens, maximum for bert
 OUTPUT_SIZE = 256
 N_EPOCHS = 30
 BATCH_SIZE = 16
 
-generate_data(df_path, INPUT_SIZE, OUTPUT_SIZE)
 
-X_train = np.load('x_train.np.npy')
-y_test = np.load('y_test.np.npy')
-y_train = np.load('y_train.np.npy')
-X_test = np.load('x_test.np.npy')
-x_emb = torch.load('test_tensor.pt')
-x_train_emb = torch.load('train_tensor.pt')
-# todo: remove reshaping (looks suspicious)
-x_emb = torch.reshape(x_emb, (-1, 512, 768))
-x_train_emb = torch.reshape(x_train_emb, (-1, 512, 768))
+def mkdir(dir_name):
+    # create dirs
+    try:
+        os.makedirs(dir_name)
+    except FileExistsError:
+        print('Dir exist')
 
 
 def init_weights(m):
@@ -46,10 +45,27 @@ def init_weights(m):
         torch.nn.init.xavier_normal_(m.weight)
 
 
-data_loader = GCJ(x_train_emb, y_train, BATCH_SIZE, INPUT_SIZE)
+mkdir(DATA_PATH)
+mkdir(TRAIN_PATH)
+
 model = Network(INPUT_SIZE, OUTPUT_SIZE)
 model.apply(init_weights)
 model = torch.jit.script(model).to(device)
+
+generate_data(df_path, DATA_PATH, INPUT_SIZE, BATCH_SIZE=64)
+
+X_train = np.load(DATA_PATH + 'x_train.np.npy')
+y_test = np.load(DATA_PATH + 'y_test.np.npy')
+y_train = np.load(DATA_PATH + 'y_train.np.npy')
+X_test = np.load(DATA_PATH + 'x_test.np.npy')
+x_emb = torch.load(DATA_PATH + 'test_tensor.pt')
+x_train_emb = torch.load(DATA_PATH + 'train_tensor.pt')
+x_emb = torch.reshape(x_emb, (-1, 512, 768))
+x_train_emb = torch.reshape(x_train_emb, (-1, 512, 768))
+
+
+data_loader = GCJ(x_train_emb, y_train, BATCH_SIZE, INPUT_SIZE)
+
 
 tree = None  # default value
 
@@ -77,7 +93,7 @@ for epoch in tqdm.tqdm(range(N_EPOCHS), desc="Epochs"):
         loss.backward()
         optimizer.step()
 
-        if (step % 10 == 0):
+        if step % 10 == 0:
             with torch.no_grad():
                 predictions = model(x_train_emb)
             tree = BallTree(predictions, metric="euclidean")
@@ -89,9 +105,9 @@ for epoch in tqdm.tqdm(range(N_EPOCHS), desc="Epochs"):
             metrics = callback.on_epoch_end(model, epoch, current_loss)
             print(metrics)
             params.append(metrics)
-            with open('training.pkl', 'wb'):
-                pickle.dump(params)
+            with open(TRAIN_PATH + 'training.pkl', 'wb') as f:
+                pickle.dump(params, f)
 
-        torch.save(model.state_dict(), 'model')
+        torch.save(model.state_dict(), TRAIN_PATH + 'model')
 
     print("Epoch: {}/{} - Loss: {:.4f}".format(epoch + 1, N_EPOCHS, np.mean(running_loss)))

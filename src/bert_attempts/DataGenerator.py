@@ -8,7 +8,7 @@ from sklearn.preprocessing import LabelEncoder
 from transformers import RobertaTokenizer, RobertaModel
 
 
-def generate_data(df_path, INPUT_SIZE, BATCH_SIZE):
+def generate_data(df_path: str, data_path: str, INPUT_SIZE: int, BATCH_SIZE: int):
     df = pd.read_csv(df_path)
     # df = df.drop(columns=["round", "task", "solution", "file",
     #                       "full_path", "Unnamed: 0.1", "Unnamed: 0", "lang"])
@@ -66,10 +66,10 @@ def generate_data(df_path, INPUT_SIZE, BATCH_SIZE):
         return emb
 
     x_emb = get_embedding(X_test)
-    np.save('x_train.np', X_train)
-    np.save('y_test.np', y_test)
-    np.save('y_train.np', y_train)
-    np.save('x_test.np', X_test)
-    torch.save(torch.cat(x_emb), 'test_tensor.pt')
+    np.save(data_path + 'x_train.np', X_train)
+    np.save(data_path + 'y_test.np', y_test)
+    np.save(data_path + 'y_train.np', y_train)
+    np.save(data_path + 'x_test.np', X_test)
+    torch.save(torch.cat(x_emb), data_path + 'test_tensor.pt')
     x_train_emb = get_embedding(X_train)
-    torch.save(torch.cat(x_train_emb), 'train_tensor.pt')
+    torch.save(torch.cat(x_train_emb), data_path + 'train_tensor.pt')
