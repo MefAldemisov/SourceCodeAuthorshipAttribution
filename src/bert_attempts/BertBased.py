@@ -52,7 +52,7 @@ model = Network(INPUT_SIZE, OUTPUT_SIZE)
 model.apply(init_weights)
 model = torch.jit.script(model).to(device)
 
-generate_data(df_path, DATA_PATH, INPUT_SIZE, BATCH_SIZE=64)
+# generate_data(df_path, DATA_PATH, INPUT_SIZE, BATCH_SIZE=64)
 
 X_train = np.load(DATA_PATH + 'x_train.np.npy')
 y_test = np.load(DATA_PATH + 'y_test.np.npy')
@@ -69,7 +69,7 @@ data_loader = GCJ(x_train_emb, y_train, BATCH_SIZE, INPUT_SIZE)
 
 tree = None  # default value
 
-optimizer = optim.Adam(model.parameters(), lr=0.01)
+optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=0.05)
 criterion = torch.jit.script(TripletLoss())
 # todo: check, why
 x_emb = x_emb[:X_test.shape[0]]
