@@ -8,6 +8,9 @@ myenv*
 embd/*
 embd
 *.csv
+*.npy
+*.pkl
+*pt
 *.h5
 *.png
 *.json

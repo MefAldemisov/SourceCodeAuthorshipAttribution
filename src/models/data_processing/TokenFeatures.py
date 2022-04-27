@@ -29,7 +29,7 @@ class TokenFeatures(DataLoader):
 
     @staticmethod
     def _write_vocab_file(filepath: str, vocab: List[str]):
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             for token in vocab:
                 print(token, file=f)
 
@@ -38,7 +38,7 @@ class TokenFeatures(DataLoader):
         x = x.replace("\n", " NLN ")
         x = x.replace("\t", " TAB ")
         x = x.replace(" ", " SPC ")
-        return x
+        return x.encode("utf-8")
 
     def initial_preprocess(self, df_path: str, tmp_dataset_filename: str):
         df = self._initial_load(df_path)
@@ -61,11 +61,11 @@ class TokenFeatures(DataLoader):
         # reduce the size of the dataset according to the n_tokens
         df.index = np.arange(len(df))
         df["n_tokens"] = df.flines.apply(lambda x: tokenizer.tokenize(x).shape[0])
-        df = df[df.n_tokens <= self.input_size]
+        # df = df[df.n_tokens <= self.input_size]
         # reindex
         df.index = np.arange(len(df))
         # reduce size
-        df = self._user_selection_and_encoding(df, 50, 450)
+        df = self._user_selection_and_encoding(df, 0, 400)
         # long saving
         # The issue is that `tokenizer.tokenize()` do not always return a shape (-1, 1).
         # Some elements of the result of the function could be a list, e.g. [[2929, 8524]].
@@ -104,7 +104,6 @@ class TokenFeatures(DataLoader):
         test_indexes = np.where(tasks >= 7)[0]
         X_train, X_test = X[train_indexes], X[test_indexes]
         y_train, y_test = y[train_indexes], y[test_indexes]
-
         # X_train, y_train = self._crop_to(X_train, y_train, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
         # X_test, y_test = self._crop_to(X_test, y_test, rs1=(-1, self.crop), rs2=(-1, self.crop, 1))
         # self.input_size = self.crop
