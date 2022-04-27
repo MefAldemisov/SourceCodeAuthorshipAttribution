@@ -69,7 +69,7 @@ data_loader = GCJ(x_train_emb, y_train, BATCH_SIZE, INPUT_SIZE)
 
 tree = None  # default value
 
-optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=0.05)
+optimizer = optim.Adam(model.parameters(), lr=10**(-6), weight_decay=0.05)
 criterion = torch.jit.script(TripletLoss())
 # todo: check, why
 x_emb = x_emb[:X_test.shape[0]]
@@ -94,9 +94,9 @@ for epoch in tqdm.tqdm(range(N_EPOCHS), desc="Epochs"):
         optimizer.step()
 
         if step % 10 == 0:
-            with torch.no_grad():
-                predictions = model(x_train_emb)
-            tree = BallTree(predictions, metric="euclidean")
+            #with torch.no_grad():
+            #    predictions = model(x_train_emb)
+            #tree = BallTree(predictions, metric="euclidean")
 
             current_loss = loss.cpu().detach().numpy()
             running_loss.append(current_loss)

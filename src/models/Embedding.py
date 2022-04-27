@@ -28,9 +28,10 @@ class Embedding(TokenFeatures, Model):
                          conv_channels=2,
                          emb_height=100,
                          activation="relu",
-                         L2_lambda=0.02,
-                         conv_sizes=[2, 4, 16]):
+                         L2_lambda=0.05,
+                         conv_sizes=[2, 4, 8, 16]):
         # parallel piece
+        # d1 = layers.Dropout(0.3)(reshape1)
         convolutions = [layers.Conv2D(conv_channels, (conv_size, emb_height),
                                       name="conv2d_size_{}".format(conv_size),
                                       padding="same", activation=activation,
@@ -60,8 +61,8 @@ class Embedding(TokenFeatures, Model):
 
     def create_model(self,
                      activation: str = "relu",
-                     L2_lambda: float = 0.02,
-                     conv_sizes: List[int] = [2, 4, 16],
+                     L2_lambda: float = 0.05,
+                     conv_sizes: List[int] = [2, 4, 8, 16],
                      emb_height: int = 100):
 
         conv_channels = 2
