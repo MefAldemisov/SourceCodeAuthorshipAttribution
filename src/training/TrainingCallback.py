@@ -18,7 +18,7 @@ class TrainingCallback:
                  y_test: np.ndarray,
                  threshold: float = 0.1,
                  input_size: int = 500,
-                 authors: List = list(range(20)),
+                 authors: List = list(range(5)),
                  model_name: str = "conv2d"):
         """
         Parameters:
@@ -136,9 +136,9 @@ class TrainingCallback:
                      epoch: int,
                      loss: float):
 
-        astr = self._writer(*self.data["simple"]["train"], model, epoch, False, True)
-        aste = self._writer(*self.data["simple"]["test"], model, epoch, True, True)
-        afte = self._writer(*self.data["full"]["test"], model, epoch, True, False)
+        astr = 0 # self._writer(*self.data["simple"]["train"], model, epoch, False, True)
+        aste = 0 # self._writer(*self.data["simple"]["test"], model, epoch, True, True)
+        afte = self._writer(*self.data["full"]["test"], model, epoch, True, True)
 
         with self.train_summary_writer.as_default():
             tf.summary.scalar("train_loss", loss, step=self.n)

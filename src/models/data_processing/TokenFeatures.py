@@ -29,7 +29,7 @@ class TokenFeatures(DataLoader):
 
     @staticmethod
     def _write_vocab_file(filepath: str, vocab: List[str]):
-        with open(filepath, "w") as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             for token in vocab:
                 print(token, file=f)
 
@@ -42,7 +42,7 @@ class TokenFeatures(DataLoader):
 
     def initial_preprocess(self, df_path: str, tmp_dataset_filename: str):
         df = self._initial_load(df_path)
-        df = df[(df.n_lines > 0)]
+        # df = df[(df.n_lines > 0)]
         # tokenize. requires time (approx 1h)
 
         df.flines = df.flines.apply(self._insert_tokens)
@@ -61,11 +61,11 @@ class TokenFeatures(DataLoader):
         # reduce the size of the dataset according to the n_tokens
         df.index = np.arange(len(df))
         df["n_tokens"] = df.flines.apply(lambda x: tokenizer.tokenize(x).shape[0])
-        df = df[df.n_tokens <= self.input_size]
+        # df = df[df.n_tokens <= self.input_size]
         # reindex
         df.index = np.arange(len(df))
         # reduce size
-        df = self._user_selection_and_encoding(df, 50, 450)
+        # df = self._user_selection_and_encoding(df, 50, 450)
         # long saving
         # The issue is that `tokenizer.tokenize()` do not always return a shape (-1, 1).
         # Some elements of the result of the function could be a list, e.g. [[2929, 8524]].
@@ -78,7 +78,7 @@ class TokenFeatures(DataLoader):
         # I have decided to flatten these lists.
         df["tokens"] = df.flines.apply(lambda x: tokenizer.tokenize(x).to_list())
 
-        df.tokens = df.tokens.apply(lambda x: list(pd.core.common.flatten(x)))
+        df.tokens = df.tokens.apply(lambda x: list(pd.core.common.flatten(x))[:self.input_size])
         dataset = df[["user", "tokens", "task"]]
         # shuffle dataset
         dataset = dataset.sample(frac=1)

@@ -87,7 +87,7 @@ class DataLoader:
         return new_X, new_y
 
     def preprocess(self,
-                   df_path: str = "../inputs/processed_dfs/cpp_9_tasks_2016.csv",
+                   df_path: str = "../inputs/processed_dfs/valid_py_2020_tasks_old_model.csv",
                    tmp_dataset_dir: str = "../inputs/preprocessed_jsons/") -> Tuple[np.ndarray, np.ndarray,
                                                                                     np.ndarray, np.ndarray]:
         """
